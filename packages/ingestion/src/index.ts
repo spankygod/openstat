@@ -12,9 +12,11 @@ import {
   count,
   desc,
   eq,
+  gte,
   inArray,
   isNull,
   lt,
+  ne,
   or,
   sql,
 } from "drizzle-orm";
@@ -280,6 +282,33 @@ export async function listEvents(options: {
   }
   if (options.filters?.status === "errors") {
     predicates.push(eq(schema.events.eventType, "error"));
+  } else if (options.filters?.status === "ok") {
+    predicates.push(ne(schema.events.eventType, "error"));
+  }
+  if (options.filters?.range) {
+    predicates.push(gte(schema.events.timestamp, getRangeStart(options.filters.range)));
+  }
+  if (options.filters?.q) {
+    predicates.push(
+      sql`(${schema.events.eventType} ILIKE ${`%${options.filters.q}%`} OR ${schema.events.data}::text ILIKE ${`%${options.filters.q}%`} OR ${schema.events.metadata}::text ILIKE ${`%${options.filters.q}%`})`,
+    );
+  }
+  if (options.filters?.model) {
+    const modelEvents = await options.db
+      .select({ eventId: schema.llmUsage.eventId })
+      .from(schema.llmUsage)
+      .where(eq(schema.llmUsage.model, options.filters.model));
+
+    if (modelEvents.length === 0) {
+      return [];
+    }
+
+    predicates.push(
+      inArray(
+        schema.events.id,
+        modelEvents.map((row) => row.eventId),
+      ),
+    );
   }
 
   return options.db
@@ -348,6 +377,168 @@ export async function getAgentTimeline(options: {
   });
 
   return { agent, events };
+}
+
+export async function listAgentRuns(options: {
+  db: Database["db"];
+  scope: ReadScope;
+  list?: WindowedList;
+}) {
+  return options.db
+    .select()
+    .from(schema.agentRuns)
+    .where(
+      and(
+        eq(schema.agentRuns.organizationId, options.scope.organizationId),
+        eq(schema.agentRuns.projectId, options.scope.projectId),
+      ),
+    )
+    .orderBy(desc(schema.agentRuns.startedAt), desc(schema.agentRuns.id))
+    .limit(options.list?.limit ?? 50);
+}
+
+export async function getAgentRunTimeline(options: {
+  db: Database["db"];
+  scope: ReadScope;
+  runId: string;
+  list?: WindowedList;
+}) {
+  const [run] = await options.db
+    .select()
+    .from(schema.agentRuns)
+    .where(
+      and(
+        eq(schema.agentRuns.id, options.runId),
+        eq(schema.agentRuns.organizationId, options.scope.organizationId),
+        eq(schema.agentRuns.projectId, options.scope.projectId),
+      ),
+    )
+    .limit(1);
+
+  if (!run) {
+    return undefined;
+  }
+
+  const events = run.externalRunId
+    ? await options.db
+        .select()
+        .from(schema.events)
+        .where(
+          and(
+            eq(schema.events.organizationId, options.scope.organizationId),
+            eq(schema.events.projectId, options.scope.projectId),
+            eq(schema.events.runId, run.externalRunId),
+          ),
+        )
+        .orderBy(desc(schema.events.timestamp), desc(schema.events.id))
+        .limit(options.list?.limit ?? 50)
+    : [];
+  const decisions = await options.db
+    .select()
+    .from(schema.tradingDecisions)
+    .where(
+      and(
+        eq(schema.tradingDecisions.projectId, options.scope.projectId),
+        eq(schema.tradingDecisions.runId, run.id),
+      ),
+    )
+    .orderBy(desc(schema.tradingDecisions.decidedAt));
+
+  return { run, events, decisions };
+}
+
+export async function listTrades(options: {
+  db: Database["db"];
+  scope: ReadScope;
+  list?: WindowedList;
+  filters?: {
+    strategy?: string;
+    symbol?: string;
+    status?: string;
+    range?: "24h" | "7d" | "30d";
+  };
+}) {
+  const predicates = [eq(schema.orders.projectId, options.scope.projectId)];
+
+  if (options.filters?.strategy) {
+    predicates.push(eq(schema.orders.strategy, options.filters.strategy));
+  }
+  if (options.filters?.symbol) {
+    predicates.push(eq(schema.orders.symbol, options.filters.symbol));
+  }
+  if (options.filters?.status) {
+    predicates.push(eq(schema.orders.status, options.filters.status as never));
+  }
+  if (options.filters?.range) {
+    predicates.push(gte(schema.orders.createdAt, getRangeStart(options.filters.range)));
+  }
+
+  return options.db
+    .select()
+    .from(schema.orders)
+    .where(and(...predicates))
+    .orderBy(desc(schema.orders.createdAt), desc(schema.orders.id))
+    .limit(options.list?.limit ?? 50);
+}
+
+export async function getTradeDetail(options: {
+  db: Database["db"];
+  scope: ReadScope;
+  tradeId: string;
+}) {
+  const [order] = await options.db
+    .select()
+    .from(schema.orders)
+    .where(
+      and(
+        eq(schema.orders.id, options.tradeId),
+        eq(schema.orders.projectId, options.scope.projectId),
+      ),
+    )
+    .limit(1);
+
+  if (!order) {
+    return undefined;
+  }
+
+  const fills = await options.db
+    .select()
+    .from(schema.fills)
+    .where(eq(schema.fills.orderId, order.id))
+    .orderBy(desc(schema.fills.filledAt));
+  const decision = order.decisionId
+    ? await options.db
+        .select()
+        .from(schema.tradingDecisions)
+        .where(
+          and(
+            eq(schema.tradingDecisions.id, order.decisionId),
+            eq(schema.tradingDecisions.projectId, options.scope.projectId),
+          ),
+        )
+        .limit(1)
+        .then((rows) => rows[0])
+    : undefined;
+
+  return { order, decision, fills };
+}
+
+export async function getTradingBreakdowns(options: {
+  db: Database["db"];
+  scope: ReadScope;
+}) {
+  const strategies = await options.db
+    .select({ strategy: schema.orders.strategy, orders: count() })
+    .from(schema.orders)
+    .where(eq(schema.orders.projectId, options.scope.projectId))
+    .groupBy(schema.orders.strategy);
+  const symbols = await options.db
+    .select({ symbol: schema.orders.symbol, orders: count() })
+    .from(schema.orders)
+    .where(eq(schema.orders.projectId, options.scope.projectId))
+    .groupBy(schema.orders.symbol);
+
+  return { strategies, symbols };
 }
 
 export async function getEvent(options: {
@@ -435,6 +626,63 @@ export async function getAnalyticsSummary(options: {
   range: "24h" | "7d" | "30d";
 }) {
   const overview = await getOverview(options);
+  const rangeStart = getRangeStart(options.range);
+  const [decisions] = await options.db
+    .select({ value: count() })
+    .from(schema.tradingDecisions)
+    .where(
+      and(
+        eq(schema.tradingDecisions.projectId, options.scope.projectId),
+        gte(schema.tradingDecisions.decidedAt, rangeStart),
+      ),
+    );
+  const [orders] = await options.db
+    .select({ value: count() })
+    .from(schema.orders)
+    .where(
+      and(
+        eq(schema.orders.projectId, options.scope.projectId),
+        gte(schema.orders.createdAt, rangeStart),
+      ),
+    );
+  const [fills] = await options.db
+    .select({ value: count() })
+    .from(schema.fills)
+    .where(
+      and(
+        eq(schema.fills.projectId, options.scope.projectId),
+        gte(schema.fills.filledAt, rangeStart),
+      ),
+    );
+  const [riskRejects] = await options.db
+    .select({ value: count() })
+    .from(schema.riskChecks)
+    .where(
+      and(
+        eq(schema.riskChecks.projectId, options.scope.projectId),
+        eq(schema.riskChecks.result, "rejected"),
+        gte(schema.riskChecks.checkedAt, rangeStart),
+      ),
+    );
+  const [failures] = await options.db
+    .select({ value: count() })
+    .from(schema.events)
+    .where(
+      and(
+        eq(schema.events.projectId, options.scope.projectId),
+        eq(schema.events.eventType, "error"),
+        gte(schema.events.timestamp, rangeStart),
+      ),
+    );
+  const [pnlSnapshots] = await options.db
+    .select({ value: count() })
+    .from(schema.pnlSnapshots)
+    .where(
+      and(
+        eq(schema.pnlSnapshots.projectId, options.scope.projectId),
+        gte(schema.pnlSnapshots.snapshotAt, rangeStart),
+      ),
+    );
 
   return {
     range: options.range,
@@ -449,6 +697,12 @@ export async function getAnalyticsSummary(options: {
       ingestionBatches: 0,
       notifications: 0,
       unreadNotifications: 0,
+      decisions: decisions?.value ?? 0,
+      orders: orders?.value ?? 0,
+      fills: fills?.value ?? 0,
+      pnlSnapshots: pnlSnapshots?.value ?? 0,
+      failures: failures?.value ?? 0,
+      riskRejects: riskRejects?.value ?? 0,
     },
     series: [],
     breakdowns: {
@@ -1334,6 +1588,13 @@ function getOrderStatus(value: unknown) {
         "Invalid order status.",
       );
   }
+}
+
+function getRangeStart(range: "24h" | "7d" | "30d") {
+  const now = new Date();
+  const days = range === "24h" ? 1 : range === "7d" ? 7 : 30;
+
+  return new Date(now.valueOf() - days * 24 * 60 * 60 * 1000);
 }
 
 function isUuid(value: string) {

@@ -8,6 +8,7 @@ import { registerReadRoutes } from "./read.js";
 const state = vi.hoisted(() => ({
   db: {},
   getAgent: vi.fn(),
+  getAgentRunTimeline: vi.fn(),
   getAgentTimeline: vi.fn(),
   getAnalyticsSummary: vi.fn(),
   getEventTypeDetail: vi.fn(),
@@ -20,12 +21,16 @@ const state = vi.hoisted(() => ({
   getOverview: vi.fn(),
   getSourceDetail: vi.fn(),
   getStatusDetail: vi.fn(),
+  getTradeDetail: vi.fn(),
+  getTradingBreakdowns: vi.fn(),
   getTraceDetail: vi.fn(),
+  listAgentRuns: vi.fn(),
   listAgents: vi.fn(),
   listEvents: vi.fn(),
   listEventArtifacts: vi.fn(),
   listIngestionBatches: vi.fn(),
   listNotifications: vi.fn(),
+  listTrades: vi.fn(),
   markNotificationsRead: vi.fn(),
   requireSessionScope: vi.fn(),
   resolveReadScope: vi.fn(),
@@ -59,6 +64,7 @@ vi.mock("@openstat/ingestion", async (importOriginal) => {
   return {
     ...actual,
     getAgent: state.getAgent,
+    getAgentRunTimeline: state.getAgentRunTimeline,
     getAgentTimeline: state.getAgentTimeline,
     getAnalyticsSummary: state.getAnalyticsSummary,
     getEventTypeDetail: state.getEventTypeDetail,
@@ -71,12 +77,16 @@ vi.mock("@openstat/ingestion", async (importOriginal) => {
     getOverview: state.getOverview,
     getSourceDetail: state.getSourceDetail,
     getStatusDetail: state.getStatusDetail,
+    getTradeDetail: state.getTradeDetail,
+    getTradingBreakdowns: state.getTradingBreakdowns,
     getTraceDetail: state.getTraceDetail,
+    listAgentRuns: state.listAgentRuns,
     listAgents: state.listAgents,
     listEvents: state.listEvents,
     listEventArtifacts: state.listEventArtifacts,
     listIngestionBatches: state.listIngestionBatches,
     listNotifications: state.listNotifications,
+    listTrades: state.listTrades,
     markNotificationsRead: state.markNotificationsRead,
     updateNotificationStatus: state.updateNotificationStatus,
   };
@@ -156,6 +166,36 @@ const ingestionBatch = {
   updatedAt: new Date("2026-05-11T00:00:01.000Z"),
 };
 
+const run = {
+  id: "00000000-0000-4000-8000-000000000701",
+  externalRunId: "run_test",
+  agentId: agent.id,
+  strategy: "breakout",
+  status: "running",
+  startedAt: new Date("2026-05-11T00:00:00.000Z"),
+  endedAt: null,
+  metadata: {},
+  createdAt: new Date("2026-05-11T00:00:00.000Z"),
+  updatedAt: new Date("2026-05-11T00:00:00.000Z"),
+};
+
+const trade = {
+  id: "00000000-0000-4000-8000-000000000801",
+  externalOrderId: "order_test",
+  strategy: "breakout",
+  symbol: "BTC-USD",
+  venue: "paper",
+  side: "buy",
+  orderType: "limit",
+  quantity: "0.10",
+  price: "62500",
+  status: "submitted",
+  submittedAt: new Date("2026-05-11T00:00:00.000Z"),
+  metadata: {},
+  createdAt: new Date("2026-05-11T00:00:00.000Z"),
+  updatedAt: new Date("2026-05-11T00:00:00.000Z"),
+};
+
 const artifact = {
   id: "00000000-0000-4000-8000-000000000601",
   projectId: scope.projectId,
@@ -175,12 +215,15 @@ describe("read routes", () => {
     state.requireSessionScope.mockResolvedValue(scope);
     state.resolveReadScope.mockResolvedValue(scope);
     state.listAgents.mockResolvedValue([agent]);
+    state.listAgentRuns.mockResolvedValue([]);
     state.listEvents.mockResolvedValue([]);
     state.listEventArtifacts.mockResolvedValue([]);
     state.listIngestionBatches.mockResolvedValue([]);
     state.listNotifications.mockResolvedValue([]);
+    state.listTrades.mockResolvedValue([]);
     state.markNotificationsRead.mockResolvedValue(0);
     state.getAgent.mockResolvedValue(null);
+    state.getAgentRunTimeline.mockResolvedValue(null);
     state.getAgentTimeline.mockResolvedValue(null);
     state.getEvent.mockResolvedValue(null);
     state.getEventResources.mockResolvedValue({
@@ -208,6 +251,11 @@ describe("read routes", () => {
       count: 0,
       agents: [],
       events: [],
+    });
+    state.getTradeDetail.mockResolvedValue(null);
+    state.getTradingBreakdowns.mockResolvedValue({
+      strategies: [],
+      symbols: [],
     });
     state.getTraceDetail.mockResolvedValue(null);
     state.getAnalyticsSummary.mockResolvedValue({
@@ -606,6 +654,152 @@ describe("read routes", () => {
         trace: "trace_123",
       },
     });
+
+    await app.close();
+  });
+
+  it("returns paginated agent runs for the resolved project scope", async () => {
+    state.listAgentRuns.mockResolvedValue([
+      run,
+      {
+        ...run,
+        id: "00000000-0000-4000-8000-000000000702",
+        startedAt: new Date("2026-05-10T23:59:00.000Z"),
+      },
+    ]);
+
+    const app = await createApp();
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/runs?limit=1",
+    });
+    const body = response.json<{
+      runs: Array<{ id: string }>;
+      pagination: { nextCursor: string | null };
+    }>();
+
+    expect(response.statusCode).toBe(200);
+    expect(state.listAgentRuns).toHaveBeenCalledWith({
+      db: state.db,
+      scope,
+      list: { limit: 2 },
+    });
+    expect(body.runs).toHaveLength(1);
+    expect(body.pagination.nextCursor).toEqual(expect.any(String));
+
+    await app.close();
+  });
+
+  it("returns one run timeline for the resolved project scope", async () => {
+    state.getAgentRunTimeline.mockResolvedValue({
+      run,
+      events: [event],
+      decisions: [],
+    });
+
+    const app = await createApp();
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/runs/${run.id}/timeline?limit=20`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(state.getAgentRunTimeline).toHaveBeenCalledWith({
+      db: state.db,
+      scope,
+      runId: run.id,
+      list: { limit: 21 },
+    });
+
+    await app.close();
+  });
+
+  it("returns a stable error code when a run is out of scope", async () => {
+    const app = await createApp();
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/runs/${run.id}/timeline`,
+    });
+    const body = response.json<{ error: { code: string } }>();
+
+    expect(response.statusCode).toBe(404);
+    expect(body.error.code).toBe("RUN_NOT_FOUND");
+
+    await app.close();
+  });
+
+  it("passes trade filters into trade list queries", async () => {
+    state.listTrades.mockResolvedValue([trade]);
+
+    const app = await createApp();
+    const response = await app.inject({
+      method: "GET",
+      url:
+        "/v1/trades?limit=10&strategy=breakout&symbol=BTC-USD" +
+        "&status=submitted&range=7d",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(state.listTrades).toHaveBeenCalledWith({
+      db: state.db,
+      scope,
+      list: { limit: 11 },
+      filters: {
+        strategy: "breakout",
+        symbol: "BTC-USD",
+        status: "submitted",
+        range: "7d",
+      },
+    });
+
+    await app.close();
+  });
+
+  it("returns one trade detail for the resolved project scope", async () => {
+    state.getTradeDetail.mockResolvedValue({
+      order: trade,
+      decision: null,
+      fills: [],
+    });
+
+    const app = await createApp();
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/trades/${trade.id}`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(state.getTradeDetail).toHaveBeenCalledWith({
+      db: state.db,
+      scope,
+      tradeId: trade.id,
+    });
+
+    await app.close();
+  });
+
+  it("returns strategy and symbol trading breakdowns", async () => {
+    state.getTradingBreakdowns.mockResolvedValue({
+      strategies: [{ strategy: "breakout", orders: 2 }],
+      symbols: [{ symbol: "BTC-USD", orders: 2 }],
+    });
+
+    const app = await createApp();
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/trades/breakdowns",
+    });
+    const body = response.json<{
+      breakdowns: { strategies: unknown[]; symbols: unknown[] };
+    }>();
+
+    expect(response.statusCode).toBe(200);
+    expect(state.getTradingBreakdowns).toHaveBeenCalledWith({
+      db: state.db,
+      scope,
+    });
+    expect(body.breakdowns.strategies).toHaveLength(1);
+    expect(body.breakdowns.symbols).toHaveLength(1);
 
     await app.close();
   });

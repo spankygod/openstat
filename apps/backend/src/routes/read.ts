@@ -1,6 +1,7 @@
 import { schema } from "@openstat/db";
 import {
   getAgent,
+  getAgentRunTimeline,
   getAgentTimeline,
   getAnalyticsSummary,
   getEventTypeDetail,
@@ -13,12 +14,16 @@ import {
   getOverview,
   getSourceDetail,
   getStatusDetail,
+  getTradeDetail,
+  getTradingBreakdowns,
   getTraceDetail,
+  listAgentRuns,
   listEventArtifacts,
   listIngestionBatches,
   listAgents,
   listEvents,
   listNotifications,
+  listTrades,
   markNotificationsRead,
   updateNotificationStatus,
 } from "@openstat/ingestion";
@@ -116,6 +121,21 @@ const ingestionBatchParamsSchema = z.object({
 
 const agentParamsSchema = z.object({
   agentId: z.uuid(),
+});
+
+const runParamsSchema = z.object({
+  runId: z.uuid(),
+});
+
+const tradeParamsSchema = z.object({
+  tradeId: z.uuid(),
+});
+
+const tradeListQuerySchema = listQuerySchema.extend({
+  strategy: z.string().min(1).max(160).optional(),
+  symbol: z.string().min(1).max(64).optional(),
+  status: z.string().min(1).max(80).optional(),
+  range: z.enum(["24h", "7d", "30d"]).optional(),
 });
 
 const eventParamsSchema = z.object({
@@ -716,6 +736,207 @@ export async function registerReadRoutes(app: FastifyInstance) {
         events: page.items,
         pagination: page.pagination,
       };
+    },
+  );
+
+  app.get(
+    "/v1/runs",
+    {
+      schema: {
+        tags: ["Trading"],
+        summary: "List agent runs for the current project",
+        security: [...sessionCookieSecurity, ...bearerSecurity],
+        querystring: listQueryStringSchema,
+        response: {
+          200: analyticsDetailResponseSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const scope = await resolveReadScope(request);
+      const list = listQuerySchema.parse(request.query);
+      const runs = await listAgentRuns({
+        db: database.db,
+        scope,
+        list: toWindowedList(list),
+      });
+      const page = paginate(runs, list.limit, (run) => ({
+        createdAt: run.startedAt,
+        id: run.id,
+      }));
+
+      return {
+        runs: page.items,
+        pagination: page.pagination,
+      };
+    },
+  );
+
+  app.get(
+    "/v1/runs/:runId/timeline",
+    {
+      schema: {
+        tags: ["Trading"],
+        summary: "Get one agent run timeline",
+        security: [...sessionCookieSecurity, ...bearerSecurity],
+        params: {
+          type: "object",
+          required: ["runId"],
+          properties: {
+            runId: { type: "string", format: "uuid" },
+          },
+        },
+        querystring: listQueryStringSchema,
+        response: {
+          200: analyticsDetailResponseSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const scope = await resolveReadScope(request);
+      const params = runParamsSchema.parse(request.params);
+      const list = listQuerySchema.parse(request.query);
+      const timeline = await getAgentRunTimeline({
+        db: database.db,
+        scope,
+        runId: params.runId,
+        list: toWindowedList(list),
+      });
+
+      if (!timeline) {
+        return reply.status(404).send({
+          error: {
+            code: "RUN_NOT_FOUND",
+            message: "Agent run was not found.",
+            requestId: request.id,
+          },
+        });
+      }
+
+      return timeline;
+    },
+  );
+
+  app.get(
+    "/v1/trades",
+    {
+      schema: {
+        tags: ["Trading"],
+        summary: "List trades for the current project",
+        security: [...sessionCookieSecurity, ...bearerSecurity],
+        querystring: analyticsDetailResponseSchema,
+        response: {
+          200: analyticsDetailResponseSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const scope = await resolveReadScope(request);
+      const query = tradeListQuerySchema.parse(request.query);
+      const trades = await listTrades({
+        db: database.db,
+        scope,
+        list: toWindowedList(query),
+        filters: {
+          strategy: query.strategy,
+          symbol: query.symbol,
+          status: query.status,
+          range: query.range,
+        },
+      });
+      const page = paginate(trades, query.limit, (trade) => ({
+        createdAt: trade.createdAt,
+        id: trade.id,
+      }));
+
+      return {
+        trades: page.items,
+        pagination: page.pagination,
+      };
+    },
+  );
+
+  app.get(
+    "/v1/trades/breakdowns",
+    {
+      schema: {
+        tags: ["Trading"],
+        summary: "Get strategy and symbol trading breakdowns",
+        security: [...sessionCookieSecurity, ...bearerSecurity],
+        response: {
+          200: analyticsDetailResponseSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const scope = await resolveReadScope(request);
+      const breakdowns = await getTradingBreakdowns({
+        db: database.db,
+        scope,
+      });
+
+      return { breakdowns };
+    },
+  );
+
+  app.get(
+    "/v1/trades/:tradeId",
+    {
+      schema: {
+        tags: ["Trading"],
+        summary: "Get one trade detail",
+        security: [...sessionCookieSecurity, ...bearerSecurity],
+        params: {
+          type: "object",
+          required: ["tradeId"],
+          properties: {
+            tradeId: { type: "string", format: "uuid" },
+          },
+        },
+        response: {
+          200: analyticsDetailResponseSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const scope = await resolveReadScope(request);
+      const params = tradeParamsSchema.parse(request.params);
+      const trade = await getTradeDetail({
+        db: database.db,
+        scope,
+        tradeId: params.tradeId,
+      });
+
+      if (!trade) {
+        return reply.status(404).send({
+          error: {
+            code: "TRADE_NOT_FOUND",
+            message: "Trade was not found.",
+            requestId: request.id,
+          },
+        });
+      }
+
+      return { trade };
     },
   );
 
