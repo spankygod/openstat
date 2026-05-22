@@ -515,7 +515,7 @@ function createFailureEvent(label: string) {
       id: "agent-failure-integration",
       name: "Failing Integration Agent",
     },
-    type: "error",
+    type: "error" as const,
     data: {
       code: "WORKER_FAILURE",
       message: `${label} failure`,
