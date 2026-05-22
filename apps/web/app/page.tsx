@@ -1,102 +1,139 @@
-import Image, { type ImageProps } from "next/image";
-import { Button } from "@repo/ui/button";
-import styles from "./page.module.css";
+import { getDashboardData } from "../lib/openstat-api";
 
-type Props = Omit<ImageProps, "src"> & {
-  srcLight: string;
-  srcDark: string;
-};
-
-const ThemeImage = (props: Props) => {
-  const { srcLight, srcDark, ...rest } = props;
+export default async function Home() {
+  const data = await getDashboardData();
+  const totals = data.analytics?.totals ?? {};
+  const overview = data.overview;
 
   return (
-    <>
-      <Image {...rest} src={srcLight} className="imgLight" />
-      <Image {...rest} src={srcDark} className="imgDark" />
-    </>
-  );
-};
-
-export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <ThemeImage
-          className={styles.logo}
-          srcLight="turborepo-dark.svg"
-          srcDark="turborepo-light.svg"
-          alt="Turborepo logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>apps/web/app/page.tsx</code>
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new/clone?demo-description=Learn+to+implement+a+monorepo+with+a+two+Next.js+sites+that+has+installed+three+local+packages.&demo-image=%2F%2Fimages.ctfassets.net%2Fe5382hct74si%2F4K8ZISWAzJ8X1504ca0zmC%2F0b21a1c6246add355e55816278ef54bc%2FBasic.png&demo-title=Monorepo+with+Turborepo&demo-url=https%3A%2F%2Fexamples-basic-web.vercel.sh%2F&from=templates&project-name=Monorepo+with+Turborepo&repository-name=monorepo-turborepo&repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fturborepo%2Ftree%2Fmain%2Fexamples%2Fbasic&root-directory=apps%2Fdocs&skippable-integrations=1&teamSlug=vercel&utm_source=create-turbo"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://turborepo.dev/docs?utm_source"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
+    <main className="shell">
+      <header className="topbar">
+        <div>
+          <p className="eyebrow">OpenStat</p>
+          <h1>AI trading agent telemetry</h1>
         </div>
-        <Button appName="web" className={styles.secondary}>
-          Open alert
-        </Button>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com/templates?search=turborepo&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
+        <a className="button" href="/api/auth/sign-in">
+          Sign in
         </a>
-        <a
-          href="https://turborepo.dev?utm_source=create-turbo"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to turborepo.dev →
-        </a>
-      </footer>
+      </header>
+
+      {data.errors.length > 0 ? (
+        <section className="notice">
+          <strong>Backend connection needs attention.</strong>
+          <span>{data.errors.slice(0, 2).join(" | ")}</span>
+        </section>
+      ) : null}
+
+      <section className="metric-grid" aria-label="Dashboard summary">
+        <Metric label="Agents" value={overview?.agents.total ?? 0} />
+        <Metric label="Events" value={overview?.events.total ?? 0} />
+        <Metric label="Decisions" value={totals.decisions ?? 0} />
+        <Metric label="Orders" value={totals.orders ?? 0} />
+        <Metric label="Fills" value={totals.fills ?? 0} />
+        <Metric label="Risk rejects" value={totals.riskRejects ?? 0} />
+      </section>
+
+      <section className="dashboard-grid">
+        <Panel title="Agents" empty={data.agents.length === 0 ? "No agents yet." : undefined}>
+          {data.agents.map((agent) => (
+            <Row
+              key={agent.id}
+              title={agent.name}
+              meta={agent.externalId ?? agent.id}
+              badge={agent.status}
+            />
+          ))}
+        </Panel>
+
+        <Panel title="API keys" empty={data.apiKeys.length === 0 ? "No visible API keys. Sign in to manage keys." : undefined}>
+          {data.apiKeys.map((apiKey) => (
+            <Row
+              key={apiKey.id}
+              title={apiKey.name}
+              meta={apiKey.prefix}
+              badge={apiKey.revokedAt ? "revoked" : "active"}
+            />
+          ))}
+        </Panel>
+
+        <Panel title="Run timeline" empty={data.runs.length === 0 ? "No runs yet." : undefined}>
+          {data.runs.map((run) => (
+            <Row
+              key={run.id}
+              title={run.strategy ?? run.externalRunId ?? run.id}
+              meta={new Date(run.startedAt).toLocaleString()}
+              badge={run.status}
+            />
+          ))}
+        </Panel>
+
+        <Panel title="Trades" empty={data.trades.length === 0 ? "No trades yet." : undefined}>
+          {data.trades.map((trade) => (
+            <Row
+              key={trade.id}
+              title={`${trade.side.toUpperCase()} ${trade.symbol}`}
+              meta={`${trade.quantity}${trade.price ? ` at ${trade.price}` : ""}`}
+              badge={trade.status}
+            />
+          ))}
+        </Panel>
+
+        <Panel title="Notifications" empty={data.notifications.length === 0 ? "No notifications." : undefined}>
+          {data.notifications.map((notification) => (
+            <Row
+              key={notification.id}
+              title={notification.title}
+              meta={notification.message ?? notification.type}
+              badge={notification.status}
+            />
+          ))}
+        </Panel>
+
+        <Panel title="Latest events" empty={(overview?.events.latest.length ?? 0) === 0 ? "No events ingested yet." : undefined}>
+          {(overview?.events.latest ?? []).map((event) => (
+            <Row
+              key={event.id}
+              title={event.eventType}
+              meta={`${event.source} | ${new Date(event.timestamp).toLocaleString()}`}
+              badge="event"
+            />
+          ))}
+        </Panel>
+      </section>
+    </main>
+  );
+}
+
+function Metric(props: { label: string; value: number }) {
+  return (
+    <div className="metric">
+      <span>{props.label}</span>
+      <strong>{props.value.toLocaleString()}</strong>
     </div>
+  );
+}
+
+function Panel(props: {
+  title: string;
+  empty?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="panel">
+      <h2>{props.title}</h2>
+      {props.empty ? <p className="empty">{props.empty}</p> : props.children}
+    </section>
+  );
+}
+
+function Row(props: { title: string; meta: string; badge: string }) {
+  return (
+    <article className="row">
+      <div>
+        <strong>{props.title}</strong>
+        <span>{props.meta}</span>
+      </div>
+      <small>{props.badge}</small>
+    </article>
   );
 }
