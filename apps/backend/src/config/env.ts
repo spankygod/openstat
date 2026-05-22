@@ -41,6 +41,10 @@ const rawEnvSchema = z.object({
   INGESTION_RATE_LIMIT_WINDOW: z.string().default("1 minute"),
   DEFAULT_AGENT_STALE_SECONDS: z.coerce.number().int().positive().default(180),
   DEFAULT_AGENT_OFFLINE_SECONDS: z.coerce.number().int().positive().default(600),
+  INGESTION_WORKER_BATCH_SIZE: z.coerce.number().int().positive().default(100),
+  INGESTION_WORKER_POLL_MS: z.coerce.number().int().positive().default(1_000),
+  INGESTION_LOCK_TTL_SECONDS: z.coerce.number().int().positive().default(60),
+  INGESTION_WORKER_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
 });
 
 const parsedEnv = rawEnvSchema.parse(process.env);
@@ -76,4 +80,8 @@ export const env = {
   ingestionRateLimitWindow: parsedEnv.INGESTION_RATE_LIMIT_WINDOW,
   defaultAgentStaleSeconds: parsedEnv.DEFAULT_AGENT_STALE_SECONDS,
   defaultAgentOfflineSeconds: parsedEnv.DEFAULT_AGENT_OFFLINE_SECONDS,
+  ingestionWorkerBatchSize: parsedEnv.INGESTION_WORKER_BATCH_SIZE,
+  ingestionWorkerPollMs: parsedEnv.INGESTION_WORKER_POLL_MS,
+  ingestionLockTtlSeconds: parsedEnv.INGESTION_LOCK_TTL_SECONDS,
+  ingestionWorkerMaxAttempts: parsedEnv.INGESTION_WORKER_MAX_ATTEMPTS,
 } as const;
