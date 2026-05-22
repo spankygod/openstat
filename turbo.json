@@ -1,6 +1,10 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
-  "globalEnv": ["OPENSTAT_INTEGRATION_DATABASE_URL"],
+  "globalEnv": [
+    "OPENSTAT_API_KEY",
+    "OPENSTAT_API_URL",
+    "OPENSTAT_INTEGRATION_DATABASE_URL"
+  ],
   "ui": "tui",
   "tasks": {
     "build": {
