@@ -30,8 +30,8 @@ export interface ApiKeyAuthContext {
 }
 
 export function generateApiKey() {
-  const publicPart = randomBytes(publicPartBytes).toString("base64url");
-  const secret = randomBytes(secretPartBytes).toString("base64url");
+  const publicPart = generateKeyPart(publicPartBytes);
+  const secret = generateKeyPart(secretPartBytes);
   const prefix = `${keyPrefix}_${publicPart}`;
   const key = `${prefix}_${secret}`;
 
@@ -40,6 +40,10 @@ export function generateApiKey() {
     prefix,
     secretHash: hashApiKeySecret(secret),
   };
+}
+
+function generateKeyPart(byteLength: number) {
+  return randomBytes(byteLength).toString("base64url").replaceAll("_", "-");
 }
 
 export async function authenticateApiKey(options: {
