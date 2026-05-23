@@ -64,6 +64,10 @@ const listQuerySchema = z.object({
   cursor: z.string().optional(),
 });
 
+const agentListQuerySchema = listQuerySchema.extend({
+  range: z.enum(["24h", "7d", "30d"]).optional(),
+});
+
 const eventListQuerySchema = listQuerySchema.extend({
   agent: z.uuid().optional(),
   eventType: z.string().min(1).max(128).optional(),
@@ -248,7 +252,10 @@ export async function registerReadRoutes(app: FastifyInstance) {
         .from(schema.dashboardPreferences)
         .where(
           and(
-            eq(schema.dashboardPreferences.organizationId, scope.organizationId),
+            eq(
+              schema.dashboardPreferences.organizationId,
+              scope.organizationId,
+            ),
             eq(schema.dashboardPreferences.membershipId, scope.membershipId),
             eq(schema.dashboardPreferences.projectId, scope.projectId),
           ),
@@ -297,7 +304,8 @@ export async function registerReadRoutes(app: FastifyInstance) {
             defaultDashboardPreferences.inspectorCollapsed,
           inspectorWidth:
             input.inspectorWidth ?? defaultDashboardPreferences.inspectorWidth,
-          defaultRange: input.defaultRange ?? defaultDashboardPreferences.defaultRange,
+          defaultRange:
+            input.defaultRange ?? defaultDashboardPreferences.defaultRange,
         })
         .onConflictDoUpdate({
           target: [
@@ -558,7 +566,13 @@ export async function registerReadRoutes(app: FastifyInstance) {
         tags: ["Monitoring"],
         summary: "List agents for the current project",
         security: [...sessionCookieSecurity, ...bearerSecurity],
-        querystring: listQueryStringSchema,
+        querystring: {
+          type: "object",
+          properties: {
+            ...listQueryStringSchema.properties,
+            range: { type: "string", enum: ["24h", "7d", "30d"] },
+          },
+        },
         response: {
           200: listAgentsResponseSchema,
           400: errorResponseSchema,
@@ -570,13 +584,14 @@ export async function registerReadRoutes(app: FastifyInstance) {
     },
     async (request) => {
       const scope = await resolveReadScope(request);
-      const list = listQuerySchema.parse(request.query);
+      const query = agentListQuerySchema.parse(request.query);
       const agents = await listAgents({
         db: database.db,
         scope,
-        list: toWindowedList(list),
+        list: toWindowedList(query),
+        range: query.range ?? "7d",
       });
-      const page = paginate(agents, list.limit, (agent) => ({
+      const page = paginate(agents, query.limit, (agent) => ({
         createdAt: agent.lastSeenAt ?? agent.createdAt,
         id: agent.id,
       }));

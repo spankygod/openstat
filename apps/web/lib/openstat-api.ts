@@ -83,6 +83,13 @@ export type DashboardAgent = {
   name: string;
   externalId?: string | null;
   status: string;
+  heartbeatHealth?: {
+    healthyHeartbeats: number;
+    lastHeartbeatAt?: string | null;
+    receivedHeartbeats: number;
+    uptimePercent: number;
+    window: DashboardRange;
+  };
   lastSeenAt?: string | null;
 };
 
@@ -136,10 +143,14 @@ export async function getDashboardData(
     await Promise.all([
       getJson<DashboardOverview>("/v1/overview"),
       getJson<DashboardAnalytics>(`/v1/analytics/summary?range=${range}`),
-      getJson<{ agents: DashboardAgent[] }>("/v1/agents?limit=12"),
+      getJson<{ agents: DashboardAgent[] }>(
+        `/v1/agents?limit=12&range=${range}`,
+      ),
       getJson<{ runs: DashboardRun[] }>("/v1/runs?limit=8"),
       getJson<{ trades: DashboardTrade[] }>("/v1/trades?limit=8"),
-      getJson<{ notifications: DashboardNotification[] }>("/v1/notifications?limit=8"),
+      getJson<{ notifications: DashboardNotification[] }>(
+        "/v1/notifications?limit=8",
+      ),
       getJson<{ apiKeys: DashboardApiKey[] }>("/v1/api-keys"),
     ]);
 

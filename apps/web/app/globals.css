@@ -1316,8 +1316,157 @@ p {
   color: var(--accent-strong);
 }
 
+.agent-uptime-monitor {
+  display: grid;
+  gap: 14px;
+}
+
+.agent-uptime-summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+}
+
+.agent-uptime-summary div,
+.agent-uptime-agent {
+  min-width: 0;
+}
+
+.agent-uptime-title,
+.agent-uptime-value,
+.agent-uptime-summary small {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.agent-uptime-title {
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.agent-uptime-title::after {
+  content: ">";
+  margin: 0 8px;
+  color: var(--muted);
+}
+
+.agent-uptime-value {
+  color: #59e67a;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.agent-uptime-summary small {
+  margin-left: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.agent-uptime-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  color: #59e67a;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.agent-uptime-state::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.agent-uptime-state-watch {
+  color: #f4c64e;
+}
+
+.agent-uptime-state-bad {
+  color: #ff6b5f;
+}
+
+.agent-uptime-bars {
+  display: grid;
+  grid-template-columns: repeat(72, minmax(2px, 1fr));
+  gap: 4px;
+  min-height: 34px;
+  align-items: stretch;
+}
+
+.agent-uptime-bar {
+  display: block;
+  min-width: 2px;
+  height: 28px;
+  border-radius: 999px;
+}
+
+.agent-uptime-good {
+  background: #59e67a;
+}
+
+.agent-uptime-watch {
+  background: #f4c64e;
+}
+
+.agent-uptime-bad {
+  background: #ff6b5f;
+}
+
+.agent-uptime-agent-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.agent-uptime-agent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 34px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #111311;
+}
+
+.agent-uptime-agent span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-uptime-agent strong {
+  flex: 0 0 auto;
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
 .dashboard-route-kpis {
   grid-template-columns: repeat(4, minmax(160px, 1fr));
+}
+
+.dashboard-route-panel {
+  margin-bottom: 16px;
+}
+
+.dashboard-route-panel:last-child {
+  margin-bottom: 0;
 }
 
 .dashboard-workbench {
@@ -1713,6 +1862,7 @@ p {
   .dashboard-command-grid,
   .dashboard-table-grid,
   .dashboard-workbench,
+  .agent-uptime-agent-grid,
   .dashboard-settings-grid {
     grid-template-columns: 1fr;
   }
@@ -1834,6 +1984,20 @@ p {
 
   .dashboard-panel-header {
     flex-direction: column;
+  }
+
+  .agent-uptime-summary {
+    flex-direction: column;
+  }
+
+  .agent-uptime-summary small {
+    display: block;
+    margin-top: 2px;
+    margin-left: 0;
+  }
+
+  .agent-uptime-bars {
+    gap: 2px;
   }
 
   .dashboard-chart {

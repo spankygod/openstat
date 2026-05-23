@@ -38,7 +38,10 @@ export interface IngestionSignalPublisher {
 }
 
 export class IngestionError extends Error {
-  constructor(public readonly code: IngestionErrorCode, message: string) {
+  constructor(
+    public readonly code: IngestionErrorCode,
+    message: string,
+  ) {
     super(message);
     this.name = "IngestionError";
   }
@@ -76,7 +79,10 @@ export async function acceptIngestionBatch(options: {
   redactionPolicy?: Partial<RedactionPolicy>;
 }) {
   if (options.input.events.length === 0) {
-    throw new IngestionError("EMPTY_INGESTION_BATCH", "Ingestion batch is empty.");
+    throw new IngestionError(
+      "EMPTY_INGESTION_BATCH",
+      "Ingestion batch is empty.",
+    );
   }
 
   const projectIds = new Set(
@@ -85,7 +91,10 @@ export async function acceptIngestionBatch(options: {
       .filter((projectId): projectId is string => Boolean(projectId)),
   );
 
-  if (projectIds.size > 1 || (projectIds.size === 1 && !projectIds.has(options.auth.projectId))) {
+  if (
+    projectIds.size > 1 ||
+    (projectIds.size === 1 && !projectIds.has(options.auth.projectId))
+  ) {
     throw new IngestionError(
       "PROJECT_SCOPE_MISMATCH",
       "Event project_id does not match the authenticated API key project.",
@@ -229,8 +238,10 @@ export async function processClaim(options: {
           status: exhausted ? "dead_lettered" : "retryable",
           deadLetteredAt: exhausted ? new Date() : null,
           lockedUntil: null,
-          errorCode: error instanceof IngestionError ? error.code : "PROCESSING_ERROR",
-          errorMessage: error instanceof Error ? error.message : "Unknown error.",
+          errorCode:
+            error instanceof IngestionError ? error.code : "PROCESSING_ERROR",
+          errorMessage:
+            error instanceof Error ? error.message : "Unknown error.",
           updatedAt: new Date(),
         })
         .where(eq(schema.ingestionOutbox.id, row.id));
@@ -243,7 +254,10 @@ export async function processClaim(options: {
     }
   }
 
-  await updateBatchStatuses(options.db, options.rows.map((row) => row.batchId));
+  await updateBatchStatuses(
+    options.db,
+    options.rows.map((row) => row.batchId),
+  );
 
   return { processed, retryable, deadLettered };
 }
@@ -286,7 +300,9 @@ export async function listEvents(options: {
     predicates.push(ne(schema.events.eventType, "error"));
   }
   if (options.filters?.range) {
-    predicates.push(gte(schema.events.timestamp, getRangeStart(options.filters.range)));
+    predicates.push(
+      gte(schema.events.timestamp, getRangeStart(options.filters.range)),
+    );
   }
   if (options.filters?.q) {
     predicates.push(
@@ -323,8 +339,9 @@ export async function listAgents(options: {
   db: Database["db"];
   scope: ReadScope;
   list?: WindowedList;
+  range?: "24h" | "7d" | "30d";
 }) {
-  return options.db
+  const agents = await options.db
     .select()
     .from(schema.agents)
     .where(
@@ -335,6 +352,86 @@ export async function listAgents(options: {
     )
     .orderBy(desc(schema.agents.lastSeenAt), desc(schema.agents.createdAt))
     .limit(options.list?.limit ?? 50);
+
+  if (agents.length === 0) {
+    return [];
+  }
+
+  const range = options.range ?? "7d";
+  const rangeStart = getRangeStart(range);
+  const heartbeatRows = await options.db
+    .select({
+      agentId: schema.heartbeats.agentId,
+      receivedAt: schema.heartbeats.receivedAt,
+      status: schema.heartbeats.status,
+    })
+    .from(schema.heartbeats)
+    .where(
+      and(
+        inArray(
+          schema.heartbeats.agentId,
+          agents.map((agent) => agent.id),
+        ),
+        gte(schema.heartbeats.receivedAt, rangeStart),
+      ),
+    );
+  const heartbeatHealthByAgent = new Map<
+    string,
+    {
+      healthyHeartbeats: number;
+      lastHeartbeatAt: Date | null;
+      receivedHeartbeats: number;
+    }
+  >();
+
+  for (const heartbeat of heartbeatRows) {
+    if (!heartbeat.agentId) {
+      continue;
+    }
+
+    const health = heartbeatHealthByAgent.get(heartbeat.agentId) ?? {
+      healthyHeartbeats: 0,
+      lastHeartbeatAt: null,
+      receivedHeartbeats: 0,
+    };
+
+    health.receivedHeartbeats += 1;
+    if (heartbeat.status === "online") {
+      health.healthyHeartbeats += 1;
+    }
+    if (
+      !health.lastHeartbeatAt ||
+      heartbeat.receivedAt > health.lastHeartbeatAt
+    ) {
+      health.lastHeartbeatAt = heartbeat.receivedAt;
+    }
+
+    heartbeatHealthByAgent.set(heartbeat.agentId, health);
+  }
+
+  return agents.map((agent) => {
+    const health = heartbeatHealthByAgent.get(agent.id) ?? {
+      healthyHeartbeats: 0,
+      lastHeartbeatAt: null,
+      receivedHeartbeats: 0,
+    };
+
+    return {
+      ...agent,
+      heartbeatHealth: {
+        healthyHeartbeats: health.healthyHeartbeats,
+        lastHeartbeatAt: health.lastHeartbeatAt,
+        receivedHeartbeats: health.receivedHeartbeats,
+        uptimePercent:
+          health.receivedHeartbeats > 0
+            ? Math.round(
+                (health.healthyHeartbeats / health.receivedHeartbeats) * 100,
+              )
+            : 0,
+        window: range,
+      },
+    };
+  });
 }
 
 export async function getAgent(options: {
@@ -470,7 +567,9 @@ export async function listTrades(options: {
     predicates.push(eq(schema.orders.status, options.filters.status as never));
   }
   if (options.filters?.range) {
-    predicates.push(gte(schema.orders.createdAt, getRangeStart(options.filters.range)));
+    predicates.push(
+      gte(schema.orders.createdAt, getRangeStart(options.filters.range)),
+    );
   }
 
   return options.db
@@ -606,7 +705,11 @@ export async function getOverview(options: {
     .select({ value: count() })
     .from(schema.events)
     .where(eq(schema.events.projectId, options.scope.projectId));
-  const latest = await listEvents({ db: options.db, scope: options.scope, list: { limit: 10 } });
+  const latest = await listEvents({
+    db: options.db,
+    scope: options.scope,
+    list: { limit: 10 },
+  });
 
   return {
     agents: {
@@ -750,7 +853,10 @@ export async function getIngestionBatch(options: {
     .where(
       and(
         eq(schema.ingestionBatches.id, options.batchId),
-        eq(schema.ingestionBatches.organizationId, options.scope.organizationId),
+        eq(
+          schema.ingestionBatches.organizationId,
+          options.scope.organizationId,
+        ),
         eq(schema.ingestionBatches.projectId, options.scope.projectId),
       ),
     )
@@ -858,9 +964,15 @@ export async function sweepAgentHealth(options: {
       continue;
     }
 
-    const staleSeconds = agent.expectedCheckInSeconds ?? options.defaultStaleSeconds;
-    const offlineSeconds = Math.max(staleSeconds * 2, options.defaultOfflineSeconds);
-    const ageSeconds = Math.floor((now.valueOf() - agent.lastSeenAt.valueOf()) / 1000);
+    const staleSeconds =
+      agent.expectedCheckInSeconds ?? options.defaultStaleSeconds;
+    const offlineSeconds = Math.max(
+      staleSeconds * 2,
+      options.defaultOfflineSeconds,
+    );
+    const ageSeconds = Math.floor(
+      (now.valueOf() - agent.lastSeenAt.valueOf()) / 1000,
+    );
     const nextStatus =
       ageSeconds >= offlineSeconds
         ? "offline"
@@ -929,7 +1041,13 @@ export async function getSourceDetail(_options: {
   source: EventSource;
   range: "24h" | "7d" | "30d";
 }) {
-  return { source: _options.source, totals: { errors: 0, total: 0 }, eventTypes: [], agents: [], sampleEvents: [] };
+  return {
+    source: _options.source,
+    totals: { errors: 0, total: 0 },
+    eventTypes: [],
+    agents: [],
+    sampleEvents: [],
+  };
 }
 
 export async function getModelDetail(_options: {
@@ -947,7 +1065,13 @@ export async function getStatusDetail(_options: {
   status: string;
   range: "24h" | "7d" | "30d";
 }) {
-  return { status: _options.status, kind: "agent", count: 0, agents: [], events: [] };
+  return {
+    status: _options.status,
+    kind: "agent",
+    count: 0,
+    agents: [],
+    events: [],
+  };
 }
 
 export async function getTraceDetail(_options: {
@@ -1070,9 +1194,16 @@ async function maybeProjectLlmUsage(
   const usage = isRecord(data.usage) ? data.usage : {};
   const inputTokens = getNumber(usage.input_tokens);
   const outputTokens = getNumber(usage.output_tokens);
-  const latencyMs = getNumber(data.latency_ms) ?? getNumber(metadata.latency_ms);
+  const latencyMs =
+    getNumber(data.latency_ms) ?? getNumber(metadata.latency_ms);
 
-  if (!model && !provider && inputTokens === undefined && outputTokens === undefined && latencyMs === undefined) {
+  if (
+    !model &&
+    !provider &&
+    inputTokens === undefined &&
+    outputTokens === undefined &&
+    latencyMs === undefined
+  ) {
     return;
   }
 
@@ -1124,7 +1255,11 @@ async function projectTradingEvent(
     case "risk_check": {
       await db.insert(schema.riskChecks).values({
         eventId: createdEvent.id,
-        decisionId: await resolveTradingDecisionId(db, row.projectId, data.decision_id),
+        decisionId: await resolveTradingDecisionId(
+          db,
+          row.projectId,
+          data.decision_id,
+        ),
         projectId: row.projectId,
         result: getRequiredString(data.result, "risk_check.result"),
         reason: getString(data.reason),
@@ -1136,7 +1271,11 @@ async function projectTradingEvent(
     case "order": {
       await db.insert(schema.orders).values({
         eventId: createdEvent.id,
-        decisionId: await resolveTradingDecisionId(db, row.projectId, data.decision_id),
+        decisionId: await resolveTradingDecisionId(
+          db,
+          row.projectId,
+          data.decision_id,
+        ),
         projectId: row.projectId,
         externalOrderId: getString(data.order_id),
         strategy: getString(data.strategy),
@@ -1445,7 +1584,10 @@ async function getAgentStatusCounts(db: Database["db"], scope: ReadScope) {
   return result;
 }
 
-async function markAgentRecoveryNotificationsRead(db: Database["db"], agentId: string) {
+async function markAgentRecoveryNotificationsRead(
+  db: Database["db"],
+  agentId: string,
+) {
   await db
     .update(schema.notifications)
     .set({ status: "read", readAt: new Date(), updatedAt: new Date() })
@@ -1460,7 +1602,10 @@ async function markAgentRecoveryNotificationsRead(db: Database["db"], agentId: s
 
 function parseOutboxEvent(payload: unknown): IngestEventInput {
   if (!isRecord(payload) || typeof payload.type !== "string") {
-    throw new IngestionError("INVALID_OUTBOX_PAYLOAD", "Outbox payload is invalid.");
+    throw new IngestionError(
+      "INVALID_OUTBOX_PAYLOAD",
+      "Outbox payload is invalid.",
+    );
   }
 
   const parsed = ingestEventInputSchema.safeParse(payload);
@@ -1517,7 +1662,9 @@ function getString(value: unknown) {
 }
 
 function getNumber(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : undefined;
 }
 
 function getRequiredString(value: unknown, field: string) {

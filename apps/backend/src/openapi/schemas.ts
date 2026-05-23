@@ -362,6 +362,23 @@ export const agentSchema = {
     },
     mode: { type: "string", enum: ["long_running", "scheduled"] },
     tags: { type: "array", items: { type: "string" } },
+    heartbeatHealth: {
+      type: "object",
+      required: [
+        "healthyHeartbeats",
+        "lastHeartbeatAt",
+        "receivedHeartbeats",
+        "uptimePercent",
+        "window",
+      ],
+      properties: {
+        healthyHeartbeats: { type: "integer" },
+        lastHeartbeatAt: { type: ["string", "null"], format: "date-time" },
+        receivedHeartbeats: { type: "integer" },
+        uptimePercent: { type: "integer" },
+        window: { type: "string", enum: ["24h", "7d", "30d"] },
+      },
+    },
     lastSeenAt: { type: ["string", "null"], format: "date-time" },
     metadata: { type: "object", additionalProperties: true },
     createdAt: { type: "string", format: "date-time" },
@@ -698,10 +715,19 @@ export const ingestionBatchSchema = {
   properties: {
     id: { type: "string", format: "uuid" },
     apiKeyId: { type: ["string", "null"], format: "uuid" },
-    source: { type: "string", enum: ["sdk", "http", "webhook", "otel", "system"] },
+    source: {
+      type: "string",
+      enum: ["sdk", "http", "webhook", "otel", "system"],
+    },
     status: {
       type: "string",
-      enum: ["accepted", "processing", "processed", "partially_processed", "failed"],
+      enum: [
+        "accepted",
+        "processing",
+        "processed",
+        "partially_processed",
+        "failed",
+      ],
     },
     eventCount: { type: "integer" },
     acceptedCount: { type: "integer" },

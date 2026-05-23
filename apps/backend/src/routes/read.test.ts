@@ -537,8 +537,10 @@ describe("read routes", () => {
       db: state.db,
       scope,
       list: {
+        cursor: undefined,
         limit: 2,
       },
+      range: "7d",
     });
     expect(body.agents).toHaveLength(1);
     expect(body.agents[0]?.id).toBe(agent.id);
