@@ -14,9 +14,12 @@
     "@heroui/react": "^3.0.5",
     "@heroui/styles": "^3.0.5",
     "@repo/ui": "workspace:*",
+    "@tailwindcss/postcss": "^4.3.0",
+    "lucide-react": "^1.16.0",
     "next": "16.2.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "tailwindcss": "^4.3.0"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",

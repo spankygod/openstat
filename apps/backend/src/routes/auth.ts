@@ -8,7 +8,7 @@ import { randomUUID } from "node:crypto";
 import { auth, database } from "../context.js";
 import { env } from "../config/env.js";
 
-const demoLoginEmail = "audit1@example.com";
+const demoLoginEmail = "demo@openstat.local";
 const demoLoginPassword = "openstat-local-demo-password";
 
 export async function registerAuthRoutes(app: FastifyInstance) {

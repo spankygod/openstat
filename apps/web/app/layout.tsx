@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -13,7 +19,7 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: "OpenStat",
-  description: "AI trading agent telemetry dashboard",
+  description: "Decision-to-trade observability for AI trading agents",
 };
 
 export default function RootLayout({
@@ -22,8 +28,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html className="light" data-theme="light" lang="en">
+      <body className={`${inter.variable} ${geistSans.variable} ${geistMono.variable}`}>
         {children}
       </body>
     </html>

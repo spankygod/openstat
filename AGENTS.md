@@ -109,6 +109,25 @@ required local services are available.
 package export pattern.
 - Prefer existing CSS module/global CSS patterns before adding new styling
 systems.
+- `apps/web` uses HeroUI v3 with Tailwind CSS v4. Keep
+`@import "tailwindcss";` before `@import "@heroui/styles";` in global CSS.
+- When using HeroUI components, follow HeroUI v3 principles: semantic variants
+(`primary`, `secondary`, `tertiary`, `danger`), compound composition, and theme
+tokens before custom slot styling.
+- Do not define app-owned global CSS selectors that collide with HeroUI BEM
+classes such as `.button`, `.modal`, `.input`, `.label`, `.textfield`,
+`.field-error`, `.card`, `.chip`, `.tabs`, `.popover`, `.drawer`, `.surface`,
+or `.tooltip`. Prefix app-specific classes by feature, for example
+`.landing-*`, `.dashboard-*`, or `.signin-*`.
+- Do not hand-roll borders, radius, focus rings, or field surfaces for HeroUI
+primitives. Prefer HeroUI theme variables such as `--accent`,
+`--accent-foreground`, `--surface`, `--overlay`, `--field-*`, `--focus`, and
+`--radius`; add component-specific CSS only for layout, spacing, and genuinely
+product-specific composition.
+- Do not add app-owned `font-size`, `font-weight`, or `line-height` overrides to
+  HeroUI primitives or reusable controls by default. Use HeroUI component
+  sizing, variants, and typography defaults first; add custom typography only
+  for page-level editorial content or a deliberately scoped product exception.
 - After meaningful UI changes, run the relevant filtered dev server and verify
 the page in a browser when practical.
 
