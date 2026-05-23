@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Activity,
   Bell,
@@ -29,12 +29,12 @@ type NavItem = {
 
 const primaryNav: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: Home, isActive: true },
-  { label: "Agents", href: "/dashboard#agents", icon: Bot },
-  { label: "Runs", href: "/dashboard#runs", icon: Activity },
-  { label: "Trades", href: "/dashboard#trades", icon: TrendingUp },
-  { label: "Alerts", href: "/dashboard#alerts", icon: Bell, meta: "New" },
-  { label: "API Keys", href: "/dashboard#api-keys", icon: KeyRound },
-  { label: "Settings", href: "/dashboard#settings", icon: Settings },
+  { label: "Agents", href: "/dashboard/agents", icon: Bot },
+  { label: "Runs", href: "/dashboard/runs", icon: Activity },
+  { label: "Trades", href: "/dashboard/trades", icon: TrendingUp },
+  { label: "Alerts", href: "/dashboard/alerts", icon: Bell, meta: "New" },
+  { label: "API Keys", href: "/dashboard/api-keys", icon: KeyRound },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
 const secondaryNav: NavItem[] = [
@@ -115,7 +115,7 @@ function SidebarContent(props: {
     <div className="dashboard-sidebar-inner">
       <div>
         <div className="dashboard-profile">
-          <Avatar size="md">
+          <Avatar className="dashboard-profile-avatar" size="md">
             <Avatar.Fallback>OD</Avatar.Fallback>
           </Avatar>
           <div className="dashboard-profile-copy">
@@ -157,8 +157,13 @@ function SidebarNavButton(props: {
   item: NavItem;
   onNavigate?: () => void;
 }) {
+  const pathname = usePathname();
   const router = useRouter();
   const Icon = props.item.icon;
+  const isActive =
+    props.item.href === "/dashboard"
+      ? pathname === "/dashboard"
+      : pathname.startsWith(props.item.href);
 
   function navigate() {
     props.onNavigate?.();
@@ -174,19 +179,21 @@ function SidebarNavButton(props: {
   return (
     <Button
       aria-label={props.isCollapsed ? props.item.label : undefined}
-      aria-current={props.item.isActive ? "page" : undefined}
+      aria-current={isActive ? "page" : undefined}
       className={[
         "dashboard-nav-item",
-        props.item.isActive ? "dashboard-nav-item-active" : "",
+        isActive ? "dashboard-nav-item-active" : "",
       ]
         .filter(Boolean)
         .join(" ")}
       fullWidth={!props.isCollapsed}
       isIconOnly={props.isCollapsed}
-      variant={props.item.isActive ? "secondary" : "tertiary"}
+      variant={isActive ? "secondary" : "tertiary"}
       onPress={navigate}
     >
-      <Icon aria-hidden="true" className="dashboard-nav-icon" size={16} />
+      <span className="dashboard-nav-icon-slot" aria-hidden="true">
+        <Icon className="dashboard-nav-icon" size={16} />
+      </span>
       <span className="dashboard-nav-label">{props.item.label}</span>
       {props.item.meta && !props.isCollapsed ? (
         <Chip color="success" size="sm" variant="soft">
