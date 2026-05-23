@@ -20,11 +20,6 @@ export function DashboardTopToolbar(props: {
 }) {
   return (
     <header className="dashboard-topbar">
-      <div className="dashboard-title-block">
-        <p className="dashboard-eyebrow">{props.eyebrow ?? "OpenStat"}</p>
-        <h1>{props.title ?? "AI trading agent telemetry"}</h1>
-      </div>
-
       <div className="dashboard-toolbar-actions">
         <SearchField
           aria-label="Search dashboard"
@@ -32,27 +27,16 @@ export function DashboardTopToolbar(props: {
           name="dashboard-search"
           variant="secondary"
         >
-          <SearchField.Group>
-            <SearchField.SearchIcon>
+          <SearchField.Group className="dashboard-search-group">
+            <SearchField.SearchIcon className="dashboard-search-icon">
               <Search aria-hidden="true" size={15} />
             </SearchField.SearchIcon>
-            <SearchField.Input placeholder="Search runs, trades, traces..." />
-            <SearchField.ClearButton />
+            <SearchField.Input
+              className="dashboard-search-input"
+              placeholder="Search runs, trades, traces..."
+            />
           </SearchField.Group>
         </SearchField>
-
-        <nav className="dashboard-range-control" aria-label="Dashboard range">
-          {(["24h", "7d", "30d"] as const).map((range) => (
-            <a
-              aria-current={props.range === range ? "page" : undefined}
-              className="dashboard-range-link"
-              href={`/dashboard?range=${range}`}
-              key={range}
-            >
-              {range}
-            </a>
-          ))}
-        </nav>
 
         <a
           className="dashboard-icon-link"
@@ -66,10 +50,35 @@ export function DashboardTopToolbar(props: {
           <Bell aria-hidden="true" size={16} />
           <span>{props.unreadNotifications || props.errorCount}</span>
         </a>
+      </div>
 
-        {props.showSignIn ? (
-          <SignInModal className="dashboard-signin-button">Sign in</SignInModal>
-        ) : null}
+      <div className="dashboard-toolbar-main">
+        <div className="dashboard-title-block">
+          <p className="dashboard-eyebrow">{props.eyebrow ?? "OpenStat"}</p>
+          <h1>{props.title ?? "AI trading agent telemetry"}</h1>
+        </div>
+
+        <div className="dashboard-toolbar-secondary-actions">
+          <span className="dashboard-timeframe-label">Timeframe</span>
+          <nav className="dashboard-range-control" aria-label="Dashboard range">
+            {(["24h", "7d", "30d"] as const).map((range) => (
+              <a
+                aria-current={props.range === range ? "page" : undefined}
+                className="dashboard-range-link"
+                href={`/dashboard?range=${range}`}
+                key={range}
+              >
+                {range}
+              </a>
+            ))}
+          </nav>
+
+          {props.showSignIn ? (
+            <SignInModal className="dashboard-signin-button">
+              Sign in
+            </SignInModal>
+          ) : null}
+        </div>
       </div>
     </header>
   );
