@@ -2,19 +2,14 @@ import {
   getDashboardData,
   getDashboardInspectorData,
 } from "../../lib/openstat-api";
-import {
-  DashboardAttentionItem,
-  DashboardDataTable,
-  DashboardEmptyState,
-  DashboardKpiCard,
-  DashboardPanel,
-  DashboardStatusChip,
-  DashboardTopToolbar,
-  formatDateTime,
-  formatNumber,
-} from "./dashboard-components";
+import { DashboardTopToolbar } from "./dashboard-components";
 import { DashboardInspector } from "./dashboard-inspector";
-import { DashboardMiniTrend } from "./dashboard-mini-trend";
+import {
+  DashboardCommandGrid,
+  DashboardLatestTables,
+  DashboardSummaryKpis,
+  getDashboardAttentionItems,
+} from "./dashboard-overview-sections";
 import {
   getFirstParam,
   parseDashboardRange,
@@ -38,51 +33,12 @@ export default async function Dashboard(props: DashboardProps) {
       ? await getDashboardInspectorData(inspect, inspectId)
       : undefined;
   const totals = data.analytics?.totals ?? {};
-  const series = data.analytics?.series ?? [];
-  const overview = data.overview;
-  const onlineAgents =
-    overview?.agents.byStatus.online ??
-    overview?.agents.byStatus.active ??
-    overview?.agents.byStatus.ok ??
-    0;
   const unreadNotifications =
     totals.unreadNotifications ??
     data.notifications.filter(
       (notification) => notification.status === "unread",
     ).length;
-  const attentionItems = [
-    ...data.errors.map((error) => ({
-      href: "#backend-notice",
-      meta: "Backend connection",
-      title: error,
-      tone: "danger" as const,
-    })),
-    ...data.notifications
-      .filter((notification) => notification.status !== "archived")
-      .slice(0, 4)
-      .map((notification) => ({
-        href: `/dashboard?range=${range}&inspect=notification&id=${notification.id}`,
-        meta: `${notification.type} | ${formatDateTime(notification.createdAt)}`,
-        title: notification.title,
-        tone:
-          notification.status === "read"
-            ? ("neutral" as const)
-            : ("warning" as const),
-      })),
-    ...data.agents
-      .filter((agent) =>
-        ["stale", "offline", "failing", "error"].includes(
-          agent.status.toLowerCase(),
-        ),
-      )
-      .slice(0, 3)
-      .map((agent) => ({
-        href: `/dashboard?range=${range}&inspect=agent&id=${agent.id}`,
-        meta: `Last seen ${formatDateTime(agent.lastSeenAt)}`,
-        title: `${agent.name} is ${agent.status}`,
-        tone: "warning" as const,
-      })),
-  ].slice(0, 7);
+  const attentionItems = getDashboardAttentionItems(data, range);
 
   return (
     <div className="dashboard-layout">
@@ -105,216 +61,13 @@ export default async function Dashboard(props: DashboardProps) {
           </section>
         ) : null}
 
-        <section className="dashboard-kpi-grid" aria-label="Dashboard summary">
-          <DashboardKpiCard
-            href="/dashboard/agents"
-            label="Agents online"
-            tone={onlineAgents > 0 ? "success" : "warning"}
-            value={formatNumber(onlineAgents)}
-          />
-          <DashboardKpiCard
-            href="/dashboard?inspect=events"
-            label="Events"
-            series={series}
-            seriesKey="events"
-            value={formatNumber(overview?.events.total)}
-          />
-          <DashboardKpiCard
-            href="/dashboard/runs"
-            label="Decisions"
-            series={series}
-            seriesKey="decisions"
-            value={formatNumber(totals.decisions)}
-          />
-          <DashboardKpiCard
-            href="/dashboard/trades"
-            label="Orders / fills"
-            series={series}
-            seriesKey="orders"
-            value={`${formatNumber(totals.orders)} / ${formatNumber(totals.fills)}`}
-          />
-          <DashboardKpiCard
-            href="/dashboard/trades"
-            label="Risk rejects"
-            series={series}
-            seriesKey="riskRejects"
-            tone={(totals.riskRejects ?? 0) > 0 ? "warning" : "success"}
-            value={formatNumber(totals.riskRejects)}
-          />
-          <DashboardKpiCard
-            href="/dashboard/alerts"
-            label="Failures"
-            series={series}
-            seriesKey="failures"
-            tone={(totals.failures ?? 0) > 0 ? "danger" : "success"}
-            value={formatNumber(totals.failures)}
-          />
-          <DashboardKpiCard
-            href="/dashboard/trades"
-            label="PnL snapshots"
-            series={series}
-            seriesKey="pnlSnapshots"
-            value={formatNumber(totals.pnlSnapshots)}
-          />
-        </section>
-
-        <section className="dashboard-command-grid">
-          <DashboardPanel
-            actions={
-              <span className="dashboard-panel-note">Events / errors</span>
-            }
-            className="dashboard-command-main"
-            eyebrow="Command center"
-            title="Decision-to-trade activity"
-          >
-            <DashboardMiniTrend
-              points={data.analytics?.series ?? []}
-              range={range}
-            />
-            <div className="dashboard-chart-legend">
-              <span>
-                <i className="dashboard-legend-events" /> Events
-              </span>
-              <span>
-                <i className="dashboard-legend-errors" /> Errors
-              </span>
-            </div>
-          </DashboardPanel>
-
-          <DashboardPanel
-            className="dashboard-attention-panel"
-            id="alerts"
-            title="Needs attention"
-          >
-            {attentionItems.length > 0 ? (
-              <div className="dashboard-attention-list">
-                {attentionItems.map((item) => (
-                  <DashboardAttentionItem
-                    href={item.href}
-                    key={`${item.href}-${item.title}`}
-                    meta={item.meta}
-                    title={item.title}
-                    tone={item.tone}
-                  />
-                ))}
-              </div>
-            ) : (
-              <DashboardEmptyState>
-                No urgent agent issues in this range.
-              </DashboardEmptyState>
-            )}
-          </DashboardPanel>
-        </section>
-
-        <section className="dashboard-table-grid">
-          <DashboardPanel
-            actions={<a href="/dashboard/runs">View all</a>}
-            id="runs"
-            title="Latest runs"
-          >
-            <DashboardDataTable
-              empty="No runs yet."
-              items={data.runs}
-              columns={[
-                {
-                  key: "run",
-                  label: "Run",
-                  render: (run) => (
-                    <a
-                      className="dashboard-table-primary"
-                      href={`/dashboard?range=${range}&inspect=run&id=${run.id}`}
-                    >
-                      {run.strategy ?? run.externalRunId ?? run.id}
-                    </a>
-                  ),
-                },
-                {
-                  key: "status",
-                  label: "Status",
-                  render: (run) => <DashboardStatusChip status={run.status} />,
-                },
-                {
-                  key: "started",
-                  label: "Started",
-                  render: (run) => formatDateTime(run.startedAt),
-                },
-              ]}
-            />
-          </DashboardPanel>
-
-          <DashboardPanel
-            actions={<a href="/dashboard/trades">View all</a>}
-            id="trades"
-            title="Latest trades"
-          >
-            <DashboardDataTable
-              empty="No trades yet."
-              items={data.trades}
-              columns={[
-                {
-                  key: "trade",
-                  label: "Trade",
-                  render: (trade) => (
-                    <a
-                      className="dashboard-table-primary"
-                      href={`/dashboard?range=${range}&inspect=trade&id=${trade.id}`}
-                    >
-                      {trade.side.toUpperCase()} {trade.symbol}
-                    </a>
-                  ),
-                },
-                {
-                  key: "value",
-                  label: "Value",
-                  render: (trade) =>
-                    `${trade.quantity}${trade.price ? ` at ${trade.price}` : ""}`,
-                },
-                {
-                  key: "status",
-                  label: "Status",
-                  render: (trade) => (
-                    <DashboardStatusChip status={trade.status} />
-                  ),
-                },
-              ]}
-            />
-          </DashboardPanel>
-
-          <DashboardPanel
-            actions={<a href="/dashboard?inspect=events">Explore</a>}
-            className="dashboard-events-panel"
-            title="Latest events"
-          >
-            <DashboardDataTable
-              empty="No events ingested yet."
-              items={overview?.events.latest ?? []}
-              columns={[
-                {
-                  key: "event",
-                  label: "Event",
-                  render: (event) => (
-                    <a
-                      className="dashboard-table-primary"
-                      href={`/dashboard?range=${range}&inspect=event&id=${event.id}`}
-                    >
-                      {event.eventType}
-                    </a>
-                  ),
-                },
-                {
-                  key: "source",
-                  label: "Source",
-                  render: (event) => event.source,
-                },
-                {
-                  key: "time",
-                  label: "Time",
-                  render: (event) => formatDateTime(event.timestamp),
-                },
-              ]}
-            />
-          </DashboardPanel>
-        </section>
+        <DashboardSummaryKpis data={data} />
+        <DashboardCommandGrid
+          attentionItems={attentionItems}
+          data={data}
+          range={range}
+        />
+        <DashboardLatestTables data={data} range={range} />
       </main>
 
       <DashboardInspector

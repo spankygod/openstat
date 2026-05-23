@@ -1,0 +1,66 @@
+.dashboard-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 84px;
+  padding: 14px;
+  border: 1px dashed var(--line);
+  border-radius: min(32px, var(--radius-3xl));
+  color: var(--muted);
+  background: #111311;
+}
+
+.dashboard-table-wrap {
+  overflow-x: auto;
+  scrollbar-color: #4b5048 transparent;
+}
+
+.dashboard-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+}
+
+.dashboard-table th,
+.dashboard-table td {
+  padding: 11px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.dashboard-table th {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.dashboard-table td {
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.dashboard-table-primary {
+  display: inline-block;
+  max-width: 260px;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+
+.dashboard-table-primary:hover {
+  color: var(--accent-strong);
+}

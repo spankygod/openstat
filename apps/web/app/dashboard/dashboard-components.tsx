@@ -1,28 +1,14 @@
 import type { ReactNode } from "react";
 
 import { Chip, SearchField } from "@heroui/react";
-import {
-  AlertTriangle,
-  Bell,
-  CircleCheck,
-  Clock3,
-  RefreshCw,
-  Search,
-} from "lucide-react";
+import { AlertTriangle, Bell, Clock3, RefreshCw, Search } from "lucide-react";
 
-import type {
-  DashboardAnalyticsSeriesPoint,
-  DashboardRange,
-} from "../../lib/openstat-api";
+import type { DashboardRange } from "../../lib/openstat-api";
 import { SignInModal } from "../sign-in-modal";
-
-type KpiTone = "neutral" | "success" | "warning" | "danger";
-
-type DataTableColumn<T> = {
-  key: string;
-  label: string;
-  render: (item: T) => ReactNode;
-};
+export { DashboardDataTable } from "./dashboard-data-table";
+export { DashboardEmptyState } from "./dashboard-empty-state";
+export { DashboardKpiCard } from "./dashboard-kpi-card";
+export type { DashboardSparklineKey, KpiTone } from "./dashboard-kpi-card";
 
 export function DashboardTopToolbar(props: {
   eyebrow?: string;
@@ -89,98 +75,6 @@ export function DashboardTopToolbar(props: {
   );
 }
 
-export function DashboardKpiCard(props: {
-  label: string;
-  series?: Array<DashboardAnalyticsSeriesPoint>;
-  seriesKey?: DashboardSparklineKey;
-  value: string;
-  href: string;
-  tone?: KpiTone;
-}) {
-  const tone = props.tone ?? "neutral";
-  const seriesKey = props.seriesKey;
-
-  return (
-    <a className={`dashboard-kpi dashboard-kpi-${tone}`} href={props.href}>
-      <span className="dashboard-kpi-label">{props.label}</span>
-      <strong>{props.value}</strong>
-      {props.series && seriesKey ? (
-        <DashboardKpiSparkline
-          points={props.series.map((point) => point[seriesKey] ?? 0)}
-          tone={tone}
-        />
-      ) : null}
-    </a>
-  );
-}
-
-type DashboardSparklineKey =
-  | "activeAgents"
-  | "decisions"
-  | "errors"
-  | "events"
-  | "failures"
-  | "fills"
-  | "orders"
-  | "pnlSnapshots"
-  | "riskRejects";
-
-function DashboardKpiSparkline(props: { points: number[]; tone: KpiTone }) {
-  const width = 180;
-  const height = 28;
-  const padding = 2;
-  const path = getSparklinePath(props.points, width, height, padding);
-
-  if (!path) {
-    return null;
-  }
-
-  return (
-    <svg
-      aria-hidden="true"
-      className="dashboard-kpi-sparkline"
-      focusable="false"
-      preserveAspectRatio="none"
-      viewBox={`0 0 ${width} ${height}`}
-    >
-      <path
-        className={`dashboard-kpi-sparkline-line dashboard-kpi-sparkline-${props.tone}`}
-        d={path}
-      />
-    </svg>
-  );
-}
-
-function getSparklinePath(
-  points: number[],
-  width: number,
-  height: number,
-  padding: number,
-) {
-  if (points.length < 2) {
-    return undefined;
-  }
-
-  const min = Math.min(...points);
-  const max = Math.max(...points);
-  const span = Math.max(max - min, 1);
-  const innerWidth = width - padding * 2;
-  const innerHeight = height - padding * 2;
-
-  return points
-    .map((point, index) => {
-      const x = padding + (index / (points.length - 1)) * innerWidth;
-      const y = padding + (1 - (point - min) / span) * innerHeight;
-
-      return `${index === 0 ? "M" : "L"} ${roundPathNumber(x)} ${roundPathNumber(y)}`;
-    })
-    .join(" ");
-}
-
-function roundPathNumber(value: number) {
-  return Number(value.toFixed(2));
-}
-
 export function DashboardPanel(props: {
   actions?: ReactNode;
   children: ReactNode;
@@ -207,15 +101,6 @@ export function DashboardPanel(props: {
       </div>
       {props.children}
     </section>
-  );
-}
-
-export function DashboardEmptyState(props: { children: ReactNode }) {
-  return (
-    <div className="dashboard-empty">
-      <CircleCheck aria-hidden="true" size={18} />
-      <p>{props.children}</p>
-    </div>
   );
 }
 
@@ -264,39 +149,6 @@ export function DashboardAttentionItem(props: {
         <small>{props.meta}</small>
       </span>
     </a>
-  );
-}
-
-export function DashboardDataTable<T extends { id: string }>(props: {
-  columns: Array<DataTableColumn<T>>;
-  empty: string;
-  items: Array<T>;
-}) {
-  if (props.items.length === 0) {
-    return <DashboardEmptyState>{props.empty}</DashboardEmptyState>;
-  }
-
-  return (
-    <div className="dashboard-table-wrap">
-      <table className="dashboard-table">
-        <thead>
-          <tr>
-            {props.columns.map((column) => (
-              <th key={column.key}>{column.label}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {props.items.map((item) => (
-            <tr key={item.id}>
-              {props.columns.map((column) => (
-                <td key={column.key}>{column.render(item)}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
   );
 }
 

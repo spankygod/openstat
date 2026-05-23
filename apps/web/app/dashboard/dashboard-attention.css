@@ -1,0 +1,61 @@
+.dashboard-attention-list {
+  display: grid;
+  gap: 8px;
+}
+
+.dashboard-attention-item {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-3xl);
+  background: #111311;
+}
+
+.dashboard-attention-item:hover {
+  border-color: color-mix(in oklab, var(--accent) 46%, var(--line));
+}
+
+.dashboard-attention-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--surface-secondary);
+  color: var(--muted);
+}
+
+.dashboard-attention-danger .dashboard-attention-icon {
+  color: #ff6b5f;
+}
+
+.dashboard-attention-warning .dashboard-attention-icon {
+  color: #f4c64e;
+}
+
+.dashboard-attention-item strong,
+.dashboard-attention-item small {
+  display: block;
+  min-width: 0;
+}
+
+.dashboard-attention-item strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.dashboard-attention-item small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
