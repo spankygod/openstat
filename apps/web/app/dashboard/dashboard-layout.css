@@ -98,6 +98,7 @@
 
 .dashboard-sidebar-collapsed .dashboard-sidebar-inner {
   align-items: center;
+  padding-top: 60px;
   padding-inline: 10px;
 }
 
@@ -286,16 +287,17 @@
 }
 
 .dashboard-sidebar-hider {
-  position: fixed;
-  top: 16px;
-  left: calc(var(--dashboard-sidebar-width) + 16px);
-  z-index: 25;
-  width: 32px;
-  min-width: 32px;
-  height: 32px;
-  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-3xl);
+  background: var(--surface);
   color: var(--foreground);
-  transition: left 180ms ease;
+  transition: background 160ms ease;
 }
 
 .dashboard-sidebar-hider:hover,

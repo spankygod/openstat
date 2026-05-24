@@ -44,8 +44,18 @@
 .dashboard-toolbar-actions {
   display: flex;
   flex-wrap: nowrap;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.dashboard-toolbar-utility-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
   gap: 8px;
   min-width: 0;
 }

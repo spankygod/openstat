@@ -5,6 +5,7 @@ import { AlertTriangle, Bell, Clock3, RefreshCw, Search } from "lucide-react";
 
 import type { DashboardRange } from "../../lib/openstat-api";
 import { SignInModal } from "../sign-in-modal";
+import { DashboardSidebarToggle } from "./dashboard-sidebar";
 import { DashboardThemeModeControl } from "./dashboard-theme-mode-control";
 export { DashboardDataTable } from "./dashboard-data-table";
 export { DashboardEmptyState } from "./dashboard-empty-state";
@@ -26,29 +27,33 @@ export function DashboardTopToolbar(props: {
   return (
     <header className="dashboard-topbar">
       <div className="dashboard-toolbar-actions">
-        <SearchField
-          aria-label="Search dashboard"
-          className="dashboard-search"
-          name="dashboard-search"
-          variant="secondary"
-        >
-          <SearchField.Group className="dashboard-search-group">
-            <SearchField.SearchIcon className="dashboard-search-icon">
-              <Search aria-hidden="true" size={15} />
-            </SearchField.SearchIcon>
-            <SearchField.Input
-              className="dashboard-search-input"
-              placeholder="Search runs, trades, traces..."
-            />
-          </SearchField.Group>
-        </SearchField>
+        <DashboardSidebarToggle />
 
-        <a className="dashboard-icon-link" href="#alerts">
-          <Bell aria-hidden="true" size={16} />
-          <span>{props.unreadNotifications || props.errorCount}</span>
-        </a>
+        <div className="dashboard-toolbar-utility-actions">
+          <SearchField
+            aria-label="Search dashboard"
+            className="dashboard-search"
+            name="dashboard-search"
+            variant="secondary"
+          >
+            <SearchField.Group className="dashboard-search-group">
+              <SearchField.SearchIcon className="dashboard-search-icon">
+                <Search aria-hidden="true" size={15} />
+              </SearchField.SearchIcon>
+              <SearchField.Input
+                className="dashboard-search-input"
+                placeholder="Search runs, trades, traces..."
+              />
+            </SearchField.Group>
+          </SearchField>
 
-        <DashboardThemeModeControl />
+          <a className="dashboard-icon-link" href="#alerts">
+            <Bell aria-hidden="true" size={16} />
+            <span>{props.unreadNotifications || props.errorCount}</span>
+          </a>
+
+          <DashboardThemeModeControl />
+        </div>
       </div>
 
       <div className="dashboard-toolbar-main">

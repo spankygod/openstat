@@ -17,7 +17,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Avatar, Button, Chip, Drawer, Separator } from "@heroui/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type NavItem = {
   label: string;
@@ -46,6 +46,18 @@ export function DashboardSidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  useEffect(() => {
+    function handleToggle() {
+      setIsCollapsed((collapsed) => !collapsed);
+    }
+
+    window.addEventListener("dashboard-sidebar-toggle", handleToggle);
+
+    return () => {
+      window.removeEventListener("dashboard-sidebar-toggle", handleToggle);
+    };
+  }, []);
+
   return (
     <>
       <aside
@@ -59,20 +71,6 @@ export function DashboardSidebar() {
       >
         <SidebarContent isCollapsed={isCollapsed} />
       </aside>
-
-      <Button
-        aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className="dashboard-sidebar-hider"
-        isIconOnly
-        variant="tertiary"
-        onPress={() => setIsCollapsed((collapsed) => !collapsed)}
-      >
-        {isCollapsed ? (
-          <PanelLeftOpen aria-hidden="true" size={17} />
-        ) : (
-          <PanelLeftClose aria-hidden="true" size={17} />
-        )}
-      </Button>
 
       <div className="dashboard-mobile-menu">
         <Button
@@ -104,6 +102,31 @@ export function DashboardSidebar() {
         </Drawer.Content>
       </Drawer.Backdrop>
     </>
+  );
+}
+
+export function DashboardSidebarToggle() {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  function toggleSidebar() {
+    setIsCollapsed((collapsed) => !collapsed);
+    window.dispatchEvent(new Event("dashboard-sidebar-toggle"));
+  }
+
+  return (
+    <Button
+      aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+      className="dashboard-sidebar-hider"
+      isIconOnly
+      variant="tertiary"
+      onPress={toggleSidebar}
+    >
+      {isCollapsed ? (
+        <PanelLeftOpen aria-hidden="true" size={17} />
+      ) : (
+        <PanelLeftClose aria-hidden="true" size={17} />
+      )}
+    </Button>
   );
 }
 
