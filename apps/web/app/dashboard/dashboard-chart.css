@@ -87,11 +87,23 @@
     transform 160ms ease;
 }
 
+.dashboard-chart-bar[data-empty="true"] {
+  min-height: 0;
+  opacity: 0;
+}
+
 .dashboard-chart-bucket:hover .dashboard-chart-bar,
 .dashboard-chart-bucket:focus .dashboard-chart-bar,
 .dashboard-chart-bucket[data-active="true"] .dashboard-chart-bar {
   filter: brightness(1.14);
   transform: translateY(-2px);
+}
+
+.dashboard-chart-bucket:hover .dashboard-chart-bar[data-empty="true"],
+.dashboard-chart-bucket:focus .dashboard-chart-bar[data-empty="true"],
+.dashboard-chart-bucket[data-active="true"] .dashboard-chart-bar[data-empty="true"] {
+  filter: none;
+  transform: none;
 }
 
 .dashboard-chart-events {
@@ -100,6 +112,10 @@
 
 .dashboard-chart-errors {
   background: #ff6b5f;
+}
+
+.dashboard-chart[data-has-errors="false"] .dashboard-chart-errors {
+  opacity: 0;
 }
 
 .dashboard-chart-guide {
@@ -265,4 +281,11 @@
 
 .dashboard-legend-errors {
   background: #ff6b5f;
+}
+
+.dashboard-chart[data-has-errors="false"]
+  ~ .dashboard-chart-legend
+  .dashboard-legend-errors {
+  background: var(--muted);
+  opacity: 0.45;
 }

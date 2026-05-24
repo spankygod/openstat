@@ -22,6 +22,7 @@ export function DashboardMiniTrend(props: {
     props.points.length,
     props.range,
   );
+  const hasErrors = props.points.some((point) => point.errors > 0);
 
   if (props.points.length === 0) {
     return (
@@ -32,7 +33,11 @@ export function DashboardMiniTrend(props: {
   }
 
   return (
-    <div className="dashboard-chart" aria-label="Events and errors over time">
+    <div
+      className="dashboard-chart"
+      data-has-errors={hasErrors ? "true" : "false"}
+      aria-label="Events and errors over time"
+    >
       <div className="dashboard-chart-y-axis" aria-hidden="true">
         {yAxisTicks.map((tick) => (
           <span key={tick}>{formatNumber(tick)}</span>
@@ -58,14 +63,22 @@ export function DashboardMiniTrend(props: {
               <span className="dashboard-chart-guide" aria-hidden="true" />
               <span
                 className="dashboard-chart-bar dashboard-chart-events"
+                data-empty={point.events > 0 ? undefined : "true"}
                 style={{
-                  height: `${Math.max((point.events / max) * 100, 4)}%`,
+                  height:
+                    point.events > 0
+                      ? `${Math.max((point.events / max) * 100, 4)}%`
+                      : "0%",
                 }}
               />
               <span
                 className="dashboard-chart-bar dashboard-chart-errors"
+                data-empty={point.errors > 0 ? undefined : "true"}
                 style={{
-                  height: `${Math.max((point.errors / max) * 100, 2)}%`,
+                  height:
+                    point.errors > 0
+                      ? `${Math.max((point.errors / max) * 100, 2)}%`
+                      : "0%",
                 }}
               />
               <span className="dashboard-chart-tooltip" role="tooltip">
