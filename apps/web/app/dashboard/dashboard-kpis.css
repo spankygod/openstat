@@ -21,14 +21,12 @@
 }
 
 .dashboard-kpi-badge {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 2;
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
+  margin-left: auto;
   min-height: 20px;
-  max-width: 45%;
+  max-width: 100%;
   padding: 0 8px;
   border-radius: var(--radius-3xl);
   color: var(--muted);
@@ -67,22 +65,61 @@
 }
 
 .dashboard-kpi-label {
-  max-width: calc(100% - 86px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.dashboard-kpi strong {
+.dashboard-kpi-value-row {
   position: relative;
   z-index: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.dashboard-kpi strong {
   display: block;
+  min-width: 0;
   overflow-wrap: anywhere;
   font-size: 24px;
   font-weight: 600;
   line-height: 32px;
   letter-spacing: 0;
   font-variant-numeric: tabular-nums;
+}
+
+.dashboard-kpi-value-parts {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+
+.dashboard-kpi-value-part,
+.dashboard-kpi-value-separator {
+  display: inline-block;
+}
+
+.dashboard-kpi-value-separator {
+  color: var(--muted);
+}
+
+.dashboard-kpi-value-neutral {
+  color: var(--foreground);
+}
+
+.dashboard-kpi-value-success {
+  color: #8be12b;
+}
+
+.dashboard-kpi-value-warning {
+  color: #f4c64e;
+}
+
+.dashboard-kpi-value-danger {
+  color: #ff6b5f;
 }
 
 .dashboard-kpi small {
@@ -107,12 +144,11 @@
 .dashboard-kpi-sparkline {
   position: absolute;
   right: 0;
-  bottom: 22px;
+  bottom: 0;
   left: 0;
   width: 100%;
-  height: 38px;
-  color: var(--muted);
-  opacity: 0.9;
+  height: 60px;
+  color: var(--foreground);
   pointer-events: none;
 }
 
@@ -153,12 +189,16 @@
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 2;
+  stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
 }
 
+.dashboard-kpi-sparkline-area {
+  stroke: none;
+}
+
 .dashboard-kpi-sparkline-success {
-  color: #59e67a;
+  color: #8be12b;
 }
 
 .dashboard-kpi-sparkline-warning {

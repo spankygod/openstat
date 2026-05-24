@@ -70,6 +70,7 @@ export function DashboardSummaryKpis(props: { data: DashboardData }) {
         sparklineSeries={[
           {
             points: series.map((point) => point.decisions),
+            tone: "neutral",
           },
           {
             points: series.map((point) => point.orders),
@@ -80,7 +81,21 @@ export function DashboardSummaryKpis(props: { data: DashboardData }) {
             tone: "success",
           },
         ]}
-        value={`${formatNumber(totals.decisions)} / ${formatNumber(totals.orders)} / ${formatNumber(totals.fills)}`}
+        value={
+          <span className="dashboard-kpi-value-parts">
+            <span className="dashboard-kpi-value-part dashboard-kpi-value-neutral">
+              {formatNumber(totals.decisions)}
+            </span>
+            <span className="dashboard-kpi-value-separator">/</span>
+            <span className="dashboard-kpi-value-part dashboard-kpi-value-warning">
+              {formatNumber(totals.orders)}
+            </span>
+            <span className="dashboard-kpi-value-separator">/</span>
+            <span className="dashboard-kpi-value-part dashboard-kpi-value-success">
+              {formatNumber(totals.fills)}
+            </span>
+          </span>
+        }
       />
       <DashboardKpiCard
         badge={{
@@ -92,15 +107,25 @@ export function DashboardSummaryKpis(props: { data: DashboardData }) {
         sparklineSeries={[
           {
             points: series.map((point) => point.riskRejects),
-            tone: "warning",
+            tone: "danger",
           },
           {
             points: series.map((point) => point.failures),
-            tone: "danger",
+            tone: "warning",
           },
         ]}
         tone={riskAndFailures > 0 ? "danger" : "success"}
-        value={`${formatNumber(totals.riskRejects)} / ${formatNumber(totals.failures)}`}
+        value={
+          <span className="dashboard-kpi-value-parts">
+            <span className="dashboard-kpi-value-part dashboard-kpi-value-danger">
+              {formatNumber(totals.riskRejects)}
+            </span>
+            <span className="dashboard-kpi-value-separator">/</span>
+            <span className="dashboard-kpi-value-part dashboard-kpi-value-warning">
+              {formatNumber(totals.failures)}
+            </span>
+          </span>
+        }
       />
     </section>
   );
