@@ -1,159 +1,205 @@
-# Turborepo starter
+# OpenStat
 
-This Turborepo starter is maintained by the Turborepo core team.
+OpenStat is a telemetry and monitoring stack for autonomous agents, with an
+early focus on AI trading agents.
 
-## Using this example
+It gives agent builders a way to collect decision, risk, order, fill, heartbeat,
+LLM usage, and PnL telemetry; process it through a backend worker; and inspect
+agent behavior in a dashboard.
 
-Run the following command:
+## Status
 
-```sh
-npx create-turbo@latest
+OpenStat is in early MVP development.
+
+The current codebase includes:
+
+- A Fastify backend API with auth, API keys, native JSON ingestion, read APIs,
+  and OpenAPI schemas.
+- A worker path for normalizing, redacting, and projecting ingested events.
+- Postgres schema and Drizzle migrations.
+- A Next.js dashboard with overview, agents, runs, trades, alerts, settings, and
+  API key pages.
+- TypeScript and Python SDK helpers for sending native OpenStat telemetry.
+- Hetzner Docker Compose deployment notes, backup scripts, and operations
+  runbooks.
+
+Still planned:
+
+- Full OTLP/HTTP protobuf decoding for traces, logs, and metrics.
+- Production-grade SDK instrumentation packages beyond endpoint/config helpers.
+- Retention jobs for raw telemetry and derived aggregates.
+- More complete dashboard session UX and interactive management flows.
+- End-to-end validation on a fresh production-like deployment.
+
+## Repository Layout
+
+```text
+apps/
+  backend/        Fastify API server and ingestion worker
+  web/            Next.js dashboard app
+  docs/           Next.js docs app
+packages/
+  auth/           API key and auth helpers
+  db/             Drizzle schema, migrations, and database utilities
+  ingestion/      Ingestion, redaction, projection, and read-query logic
+  schemas/        Shared Zod contracts
+  sdk-js/         TypeScript OpenStat SDK
+  ui/             Shared React UI components
+  eslint-config/  Shared ESLint configuration
+  typescript-config/
+sdks/
+  python/         Python OpenStat SDK
+deploy/
+  hetzner/        Single-VPS deployment template and runbooks
+docs/
+  plans/          System design and implementation notes
 ```
 
-## What's inside?
+## Prerequisites
 
-This Turborepo includes the following packages/apps:
+- Node.js 18 or newer
+- PNPM 9
+- Postgres, if running the backend locally
+- Redis, optional but recommended for local worker signaling
 
-### Apps and Packages
+The repo uses PNPM workspaces and Turborepo.
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+## Local Development
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+Install dependencies:
 
 ```sh
-cd my-turborepo
-turbo build
+pnpm install
 ```
 
-Without global `turbo`, use your package manager:
+Create a backend env file:
 
 ```sh
-cd my-turborepo
-npx turbo build
-pnpm dlx turbo build
-pnpm exec turbo build
+cp apps/backend/.env.example apps/backend/.env
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+On Windows PowerShell:
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+```powershell
+Copy-Item apps/backend/.env.example apps/backend/.env
+```
+
+The default backend values expect:
+
+```text
+Postgres: postgres://openstat:openstat@localhost:5432/openstat
+Redis:    redis://localhost:6379
+API:      http://localhost:4000
+Web:      http://localhost:3000
+Docs:     http://localhost:3001
+```
+
+Run the whole monorepo:
 
 ```sh
-turbo build --filter=docs
+pnpm dev
 ```
 
-Without global `turbo`:
+Or run apps individually:
 
 ```sh
-npx turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
+pnpm --filter backend dev
+pnpm --filter backend worker
+pnpm --filter web dev
+pnpm --filter docs dev
 ```
 
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+Run database migrations:
 
 ```sh
-cd my-turborepo
-turbo dev
+pnpm --filter @openstat/db db:migrate
 ```
 
-Without global `turbo`, use your package manager:
+Seed local demo data:
 
 ```sh
-cd my-turborepo
-npx turbo dev
-pnpm exec turbo dev
-pnpm exec turbo dev
+pnpm --filter backend seed:dev
 ```
 
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+For dashboard pages that should read with an API key instead of a browser
+session, set `OPENSTAT_DASHBOARD_API_KEY`. The web app uses
+`NEXT_PUBLIC_OPENSTAT_API_URL` and defaults to `http://localhost:4000`.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+## Useful Commands
 
 ```sh
-turbo dev --filter=web
+pnpm build
+pnpm lint
+pnpm check-types
+pnpm format
+pnpm --filter backend test
+pnpm --filter backend test:integration
 ```
 
-Without global `turbo`:
+Integration tests require `OPENSTAT_INTEGRATION_DATABASE_URL` to point at a
+disposable Postgres database.
+
+## Ingestion
+
+Native ingestion endpoints:
+
+```text
+POST /v1/ingest/events
+POST /v1/ingest/batch
+POST /v1/ingest/heartbeat
+```
+
+Requests are authenticated with:
+
+```text
+Authorization: Bearer ostat_...
+```
+
+The TypeScript SDK lives in `packages/sdk-js`, and the Python SDK lives in
+`sdks/python`.
+
+## Deployment
+
+The `deploy/hetzner` directory contains a single-VPS Docker Compose template for:
+
+- API
+- worker
+- Postgres
+- Redis
+- Caddy
+
+Start with:
 
 ```sh
-npx turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
+docker compose -f deploy/hetzner/docker-compose.yml --env-file deploy/hetzner/.env up -d --build
 ```
 
-### Remote Caching
+Copy `deploy/hetzner/.env.example` to `deploy/hetzner/.env` and replace every
+secret before deploying.
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+## Security And Privacy
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+OpenStat is designed to redact sensitive telemetry by default. The ingestion
+pipeline treats prompts, tool arguments/results, account identifiers, secrets,
+and raw order payloads as sensitive fields.
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
+Do not commit real `.env` files, production credentials, private keys, customer
+data, or production backup details.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+## Contributing
+
+Contributions are welcome while the project takes shape. Please keep changes
+small and scoped, follow the existing package boundaries, and include tests when
+changing backend behavior, auth, ingestion, validation, or response shapes.
+
+Before opening a pull request, run the relevant checks:
 
 ```sh
-cd my-turborepo
-turbo login
+pnpm lint
+pnpm check-types
+pnpm --filter backend test
 ```
 
-Without global `turbo`, use your package manager:
+## License
 
-```sh
-cd my-turborepo
-npx turbo login
-pnpm exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-pnpm exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+OpenStat is licensed under the MIT License. See `LICENSE` for details.
