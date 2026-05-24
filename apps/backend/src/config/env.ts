@@ -7,16 +7,13 @@ const nodeEnvSchema = z
   .enum(["development", "test", "production"])
   .default("development");
 
-const optionalNonEmptyString = z.preprocess(
-  (value) => {
-    if (typeof value === "string" && value.trim() === "") {
-      return undefined;
-    }
+const optionalNonEmptyString = z.preprocess((value) => {
+  if (typeof value === "string" && value.trim() === "") {
+    return undefined;
+  }
 
-    return value;
-  },
-  z.string().min(1).optional(),
-);
+  return value;
+}, z.string().min(1).optional());
 
 const rawEnvSchema = z.object({
   NODE_ENV: nodeEnvSchema,
@@ -36,11 +33,24 @@ const rawEnvSchema = z.object({
   APP_WEB_URL: z.string().url().default("http://localhost:3000"),
   API_PUBLIC_URL: z.string().url().default("http://localhost:4000"),
   REDIS_URL: z.string().url().optional(),
-  INGESTION_MAX_BODY_BYTES: z.coerce.number().int().positive().default(1_000_000),
+  OPENSTAT_DEMO_EMAIL: z.string().email().default("demo@openstat.local"),
+  OPENSTAT_DEMO_PASSWORD: z
+    .string()
+    .min(8)
+    .default("openstat-local-demo-password"),
+  INGESTION_MAX_BODY_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(1_000_000),
   INGESTION_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(600),
   INGESTION_RATE_LIMIT_WINDOW: z.string().default("1 minute"),
   DEFAULT_AGENT_STALE_SECONDS: z.coerce.number().int().positive().default(180),
-  DEFAULT_AGENT_OFFLINE_SECONDS: z.coerce.number().int().positive().default(600),
+  DEFAULT_AGENT_OFFLINE_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(600),
   INGESTION_WORKER_BATCH_SIZE: z.coerce.number().int().positive().default(100),
   INGESTION_WORKER_POLL_MS: z.coerce.number().int().positive().default(1_000),
   INGESTION_LOCK_TTL_SECONDS: z.coerce.number().int().positive().default(60),
@@ -49,14 +59,16 @@ const rawEnvSchema = z.object({
 
 const parsedEnv = rawEnvSchema.parse(process.env);
 
-const fallbackSecret =
-  "openstat-development-secret-change-before-production";
+const fallbackSecret = "openstat-development-secret-change-before-production";
 
 if (parsedEnv.NODE_ENV === "production" && !parsedEnv.BETTER_AUTH_SECRET) {
   throw new Error("BETTER_AUTH_SECRET is required in production.");
 }
 
-if (Boolean(parsedEnv.GOOGLE_CLIENT_ID) !== Boolean(parsedEnv.GOOGLE_CLIENT_SECRET)) {
+if (
+  Boolean(parsedEnv.GOOGLE_CLIENT_ID) !==
+  Boolean(parsedEnv.GOOGLE_CLIENT_SECRET)
+) {
   throw new Error(
     "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be configured together.",
   );
@@ -75,6 +87,8 @@ export const env = {
   appWebUrl: parsedEnv.APP_WEB_URL,
   apiPublicUrl: parsedEnv.API_PUBLIC_URL,
   redisUrl: parsedEnv.REDIS_URL,
+  demoEmail: parsedEnv.OPENSTAT_DEMO_EMAIL,
+  demoPassword: parsedEnv.OPENSTAT_DEMO_PASSWORD,
   ingestionMaxBodyBytes: parsedEnv.INGESTION_MAX_BODY_BYTES,
   ingestionRateLimitMax: parsedEnv.INGESTION_RATE_LIMIT_MAX,
   ingestionRateLimitWindow: parsedEnv.INGESTION_RATE_LIMIT_WINDOW,

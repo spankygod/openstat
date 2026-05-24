@@ -8,9 +8,6 @@ import { randomUUID } from "node:crypto";
 import { auth, database } from "../context.js";
 import { env } from "../config/env.js";
 
-const demoLoginEmail = "demo@openstat.local";
-const demoLoginPassword = "openstat-local-demo-password";
-
 export async function registerAuthRoutes(app: FastifyInstance) {
   app.post("/api/auth/demo-login", async (request, reply) => {
     if (env.nodeEnv === "production") {
@@ -26,7 +23,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     const [demoUser] = await database.db
       .select()
       .from(schema.user)
-      .where(eq(schema.user.email, demoLoginEmail))
+      .where(eq(schema.user.email, env.demoEmail))
       .limit(1);
 
     if (!demoUser) {
@@ -49,7 +46,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         ),
       )
       .limit(1);
-    const passwordHash = await hashPassword(demoLoginPassword);
+    const passwordHash = await hashPassword(env.demoPassword);
 
     if (credentialAccount) {
       await database.db
@@ -72,8 +69,8 @@ export async function registerAuthRoutes(app: FastifyInstance) {
 
     const result = await auth.api.signInEmail({
       body: {
-        email: demoLoginEmail,
-        password: demoLoginPassword,
+        email: env.demoEmail,
+        password: env.demoPassword,
         rememberMe: true,
       },
       headers: fromNodeHeaders(request.headers),

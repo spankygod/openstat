@@ -7,7 +7,7 @@ import { env } from "../config/env.js";
 
 const database = createDatabase(env.databaseUrl);
 
-const seedEmail = "demo@openstat.local";
+const seedEmail = env.demoEmail;
 const seedUserName = "OpenStat Demo";
 const seedSlug =
   seedEmail

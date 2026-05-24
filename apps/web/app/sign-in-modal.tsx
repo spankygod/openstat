@@ -15,7 +15,8 @@ import { useState } from "react";
 
 const apiUrl =
   process.env.NEXT_PUBLIC_OPENSTAT_API_URL ?? "http://localhost:4000";
-const demoEmail = "demo@openstat.local";
+const demoEmail =
+  process.env.NEXT_PUBLIC_OPENSTAT_DEMO_EMAIL ?? "demo@openstat.local";
 
 type SignInModalProps = {
   children: ReactNode;
