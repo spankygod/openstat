@@ -20,8 +20,8 @@ export function DashboardCommandGrid(props: {
       <DashboardPanel
         actions={<span className="dashboard-panel-note">Events / errors</span>}
         className="dashboard-command-main"
-        eyebrow="Command center"
-        title="Decision-to-trade activity"
+        eyebrow="Operations"
+        title="Agent activity"
       >
         <DashboardMiniTrend
           points={props.data.analytics?.series ?? []}
@@ -40,7 +40,7 @@ export function DashboardCommandGrid(props: {
       <DashboardPanel
         className="dashboard-attention-panel"
         id="alerts"
-        title="Needs attention"
+        title="Action required"
       >
         {props.attentionItems.length > 0 ? (
           <div className="dashboard-attention-list">
