@@ -13,7 +13,8 @@ import {
 import type { ReactNode } from "react";
 import { useState } from "react";
 
-const apiUrl = process.env.NEXT_PUBLIC_OPENSTAT_API_URL ?? "http://localhost:4000";
+const apiUrl =
+  process.env.NEXT_PUBLIC_OPENSTAT_API_URL ?? "http://localhost:4000";
 const demoEmail = "demo@openstat.local";
 
 type SignInModalProps = {
@@ -50,7 +51,9 @@ export function SignInModal({ children, className }: SignInModalProps) {
 
       window.location.href = "/dashboard";
     } catch {
-      setError("Could not reach the OpenStat API. Check that the backend is running.");
+      setError(
+        "Could not reach the OpenStat API. Check that the backend is running.",
+      );
     } finally {
       setIsPending(false);
     }
@@ -73,7 +76,9 @@ export function SignInModal({ children, className }: SignInModalProps) {
 
       window.location.href = "/dashboard";
     } catch {
-      setError("Could not reach the OpenStat API. Check that the backend is running.");
+      setError(
+        "Could not reach the OpenStat API. Check that the backend is running.",
+      );
     } finally {
       setIsPending(false);
     }
@@ -113,7 +118,9 @@ export function SignInModal({ children, className }: SignInModalProps) {
 
       setError("Google sign-in did not return a redirect URL.");
     } catch {
-      setError("Could not reach the OpenStat API. Check that the backend is running.");
+      setError(
+        "Could not reach the OpenStat API. Check that the backend is running.",
+      );
     } finally {
       setIsPending(false);
     }
@@ -131,7 +138,10 @@ export function SignInModal({ children, className }: SignInModalProps) {
             <Modal.Header className="signin-header">
               <Modal.Icon>O</Modal.Icon>
               <Modal.Heading>Create an account</Modal.Heading>
-              <p>Start tracking trading-agent decisions, risk checks, and outcomes.</p>
+              <p>
+                Start tracking trading-agent decisions, risk checks, and
+                outcomes.
+              </p>
             </Modal.Header>
             <Modal.Body>
               <Form
@@ -151,7 +161,12 @@ export function SignInModal({ children, className }: SignInModalProps) {
                   />
                   <FieldError />
                 </TextField>
-                <TextField isRequired minLength={8} name="password" type="password">
+                <TextField
+                  isRequired
+                  minLength={8}
+                  name="password"
+                  type="password"
+                >
                   <Label>Password</Label>
                   <Input
                     autoComplete="current-password"
@@ -164,11 +179,19 @@ export function SignInModal({ children, className }: SignInModalProps) {
 
                 {error ? <p className="signin-error">{error}</p> : null}
 
-                <Button fullWidth isPending={isPending} type="submit" variant="primary">
+                <Button
+                  fullWidth
+                  isPending={isPending}
+                  type="submit"
+                  variant="primary"
+                >
                   Sign in
                 </Button>
                 <div className="signin-divider" aria-hidden="true">
-                  <Separator className="signin-divider-line" variant="tertiary" />
+                  <Separator
+                    className="signin-divider-line"
+                    variant="tertiary"
+                  />
                   <span>OR</span>
                 </div>
                 <Button
