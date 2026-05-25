@@ -58,29 +58,10 @@ export function SignInModal({ children, className }: SignInModalProps) {
     }
   }
 
-  async function signInDemo() {
+  function signInDemo() {
     setError(undefined);
     setIsPending(true);
-
-    try {
-      const response = await fetch(`${apiUrl}/api/auth/demo-login`, {
-        method: "POST",
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        setError("Demo login is not available. Run the local seed first.");
-        return;
-      }
-
-      window.location.href = "/dashboard";
-    } catch {
-      setError(
-        "Could not reach the OpenStat API. Check that the backend is running.",
-      );
-    } finally {
-      setIsPending(false);
-    }
+    window.location.href = "/dashboard";
   }
 
   async function signInGoogle() {
