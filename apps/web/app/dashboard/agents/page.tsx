@@ -29,6 +29,8 @@ export default async function AgentsPage(props: AgentsPageProps) {
   const inspect = parseInspectorKind(getFirstParam(searchParams?.inspect));
   const inspectId = getFirstParam(searchParams?.id);
   const data = await getDashboardData(range);
+  const series = data.analytics?.series ?? [];
+  const totalAgents = data.overview?.agents.total ?? 0;
   const inspector =
     inspect && inspectId
       ? await getDashboardInspectorData(inspect, inspectId)
@@ -36,7 +38,9 @@ export default async function AgentsPage(props: AgentsPageProps) {
   const freshHeartbeatAgents =
     data.overview?.agents.byStatus.online ??
     data.overview?.agents.byStatus.active ??
+    data.overview?.agents.byStatus.ok ??
     0;
+  const attentionCount = data.analytics?.totals.unreadNotifications ?? 0;
   const heartbeatTotals = data.agents.reduce(
     (totals, agent) => {
       totals.healthy += agent.heartbeatHealth?.healthyHeartbeats ?? 0;
@@ -50,6 +54,13 @@ export default async function AgentsPage(props: AgentsPageProps) {
     heartbeatTotals.received > 0
       ? Math.round((heartbeatTotals.healthy / heartbeatTotals.received) * 100)
       : 0;
+  const fleetUptimeTone = getUptimeTone(fleetUptime);
+  const fleetUptimeState =
+    fleetUptime >= 95
+      ? "Operational"
+      : fleetUptime >= 80
+        ? "Degraded"
+        : "Needs attention";
 
   return (
     <DashboardRouteShell
@@ -61,19 +72,40 @@ export default async function AgentsPage(props: AgentsPageProps) {
     >
       <section className="dashboard-kpi-grid dashboard-route-kpis">
         <DashboardKpiCard
+          badge={{
+            label: `${formatPercentage(freshHeartbeatAgents, totalAgents)} current`,
+            tone: freshHeartbeatAgents > 0 ? "success" : "warning",
+          }}
           href="/dashboard/agents"
           label="Current heartbeat"
+          series={series}
+          seriesKey="activeAgents"
           tone={freshHeartbeatAgents > 0 ? "success" : "warning"}
           value={formatNumber(freshHeartbeatAgents)}
         />
         <DashboardKpiCard
+          badge={{
+            label: `${formatNumber(totalAgents)} tracked`,
+            tone: "neutral",
+          }}
           href="/dashboard/agents"
           label="Total agents"
-          value={formatNumber(data.overview?.agents.total)}
+          value={formatNumber(totalAgents)}
         />
         <DashboardKpiCard
+          badge={{
+            label: fleetUptimeState,
+            tone:
+              fleetUptime >= 95
+                ? "success"
+                : fleetUptime >= 80
+                  ? "warning"
+                  : "danger",
+          }}
           href="/dashboard/agents"
           label="Heartbeat uptime"
+          monitorBars={buildKpiUptimeBars(fleetUptime, 24, fleetUptimeTone)}
+          monitorLabel={`Agent heartbeat uptime ${fleetUptime}% over ${range}`}
           tone={
             fleetUptime >= 95
               ? "success"
@@ -84,14 +116,14 @@ export default async function AgentsPage(props: AgentsPageProps) {
           value={`${fleetUptime}%`}
         />
         <DashboardKpiCard
+          badge={{
+            label: attentionCount > 0 ? "Needs review" : "Clear",
+            tone: attentionCount > 0 ? "warning" : "success",
+          }}
           href="/dashboard/alerts"
           label="Attention"
-          tone={
-            (data.analytics?.totals.unreadNotifications ?? 0) > 0
-              ? "warning"
-              : "success"
-          }
-          value={formatNumber(data.analytics?.totals.unreadNotifications)}
+          tone={attentionCount > 0 ? "warning" : "success"}
+          value={formatNumber(attentionCount)}
         />
       </section>
 
@@ -232,6 +264,16 @@ function getUptimeTone(uptimePercent: number) {
   return uptimePercent >= 95 ? "good" : uptimePercent >= 80 ? "watch" : "bad";
 }
 
+function buildKpiUptimeBars(
+  uptimePercent: number,
+  count: number,
+  degradedTone: "good" | "watch" | "bad",
+) {
+  return buildUptimeBars(uptimePercent, count, degradedTone).map((tone) => ({
+    tone,
+  }));
+}
+
 function buildUptimeBars(
   uptimePercent: number,
   count: number,
@@ -245,4 +287,18 @@ function buildUptimeBars(
   return Array.from({ length: count }, (_, index) =>
     index >= count - degradedCount ? degradedTone : "good",
   );
+}
+
+function formatPercentage(value: number, total: number) {
+  if (total <= 0) {
+    return "0%";
+  }
+
+  const percentage = (value / total) * 100;
+
+  if (percentage > 0 && percentage < 1) {
+    return "<1%";
+  }
+
+  return `${Math.round(percentage)}%`;
 }
