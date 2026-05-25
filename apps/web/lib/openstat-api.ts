@@ -118,6 +118,7 @@ export type DashboardEvent = {
 export type DashboardEventsData = {
   errors: string[];
   events: DashboardEvent[];
+  fallbackRange?: DashboardRange;
   pagination?: {
     nextCursor?: string | null;
   };
@@ -209,6 +210,28 @@ export async function getDashboardEvents(
     events: DashboardEvent[];
     pagination?: DashboardEventsData["pagination"];
   }>(`/v1/events?limit=${limit}&range=${range}`);
+
+  if (events.ok && events.data.events.length === 0) {
+    const latestEvents = await getJson<{
+      events: DashboardEvent[];
+      pagination?: DashboardEventsData["pagination"];
+    }>(`/v1/events?limit=${limit}`);
+
+    if (latestEvents.ok && latestEvents.data.events.length > 0) {
+      return {
+        errors: [],
+        events: latestEvents.data.events,
+        fallbackRange: range,
+        pagination: latestEvents.data.pagination,
+      };
+    }
+
+    return {
+      errors: latestEvents.ok ? [] : [latestEvents.error],
+      events: [],
+      pagination: events.data.pagination,
+    };
+  }
 
   return {
     errors: events.ok ? [] : [events.error],

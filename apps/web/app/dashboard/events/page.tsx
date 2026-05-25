@@ -66,6 +66,7 @@ export default async function EventsPage(props: EventsPageProps) {
               eventData.events.length,
               Boolean(eventData.pagination?.nextCursor),
             )}
+            {eventData.fallbackRange ? " latest available" : ""}
           </span>
         }
         className="dashboard-route-panel dashboard-events-route-panel"

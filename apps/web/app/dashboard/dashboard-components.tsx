@@ -19,11 +19,14 @@ export type {
 export function DashboardTopToolbar(props: {
   eyebrow?: string;
   range: DashboardRange;
+  rangeBasePath?: string;
   errorCount: number;
   showSignIn?: boolean;
   title?: string;
   unreadNotifications: number;
 }) {
+  const rangeBasePath = props.rangeBasePath ?? "/dashboard";
+
   return (
     <header className="dashboard-topbar">
       <div className="dashboard-toolbar-actions">
@@ -68,7 +71,7 @@ export function DashboardTopToolbar(props: {
               <a
                 aria-current={props.range === range ? "page" : undefined}
                 className="dashboard-range-link"
-                href={`/dashboard?range=${range}`}
+                href={`${rangeBasePath}?range=${range}`}
                 key={range}
               >
                 {range}
@@ -79,7 +82,7 @@ export function DashboardTopToolbar(props: {
           <a
             aria-label="Refresh dashboard"
             className="dashboard-icon-link"
-            href={`/dashboard?range=${props.range}`}
+            href={`${rangeBasePath}?range=${props.range}`}
           >
             <RefreshCw aria-hidden="true" size={16} />
           </a>

@@ -17,10 +17,12 @@ export function DashboardRouteShell(props: {
   range: DashboardRange;
   title: string;
 }) {
+  const rangeBasePath = props.closeHref?.split("?")[0] ?? "/dashboard";
   const unreadNotifications =
     props.data.analytics?.totals.unreadNotifications ??
-    props.data.notifications.filter((notification) => notification.status === "unread")
-      .length;
+    props.data.notifications.filter(
+      (notification) => notification.status === "unread",
+    ).length;
 
   return (
     <div className="dashboard-layout">
@@ -30,6 +32,7 @@ export function DashboardRouteShell(props: {
         <DashboardTopToolbar
           errorCount={props.data.errors.length}
           range={props.range}
+          rangeBasePath={rangeBasePath}
           title={props.title}
           unreadNotifications={unreadNotifications}
         />
