@@ -35,6 +35,24 @@ curl https://api.openstat.example.com/ready
 Set `NEXT_PUBLIC_OPENSTAT_API_URL` to the API domain, for example
 `https://api.openstat.example.com`.
 
+## GitHub Actions Deploy
+
+The repository includes `.github/workflows/deploy-hetzner.yml`. It deploys the
+backend stack when `main` is pushed, after typecheck and lint pass.
+
+Add these repository secrets in GitHub:
+
+```text
+HETZNER_HOST=37.27.196.51
+HETZNER_USER=deploy
+HETZNER_SSH_KEY=<private SSH key allowed for deploy@37.27.196.51>
+HETZNER_REPO_DIR=/home/deploy/openstat
+```
+
+The deploy job updates the VPS checkout to `origin/main`, builds the API and
+worker images, runs database migrations, restarts the Compose stack, and checks
+the backend readiness endpoint from inside the API container.
+
 ## Future Two-VPS Split
 
 When the database outgrows the single VPS, move Postgres to a second Hetzner VPS
