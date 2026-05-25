@@ -33,7 +33,7 @@ export default async function AgentsPage(props: AgentsPageProps) {
     inspect && inspectId
       ? await getDashboardInspectorData(inspect, inspectId)
       : undefined;
-  const online =
+  const freshHeartbeatAgents =
     data.overview?.agents.byStatus.online ??
     data.overview?.agents.byStatus.active ??
     0;
@@ -62,9 +62,9 @@ export default async function AgentsPage(props: AgentsPageProps) {
       <section className="dashboard-kpi-grid dashboard-route-kpis">
         <DashboardKpiCard
           href="/dashboard/agents"
-          label="Online"
-          tone={online > 0 ? "success" : "warning"}
-          value={formatNumber(online)}
+          label="Current heartbeat"
+          tone={freshHeartbeatAgents > 0 ? "success" : "warning"}
+          value={formatNumber(freshHeartbeatAgents)}
         />
         <DashboardKpiCard
           href="/dashboard/agents"

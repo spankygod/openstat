@@ -9,7 +9,7 @@ export function DashboardSummaryKpis(props: { data: DashboardData }) {
   const totals = props.data.analytics?.totals ?? {};
   const series = props.data.analytics?.series ?? [];
   const overview = props.data.overview;
-  const onlineAgents =
+  const freshHeartbeatAgents =
     overview?.agents.byStatus.online ??
     overview?.agents.byStatus.active ??
     overview?.agents.byStatus.ok ??
@@ -39,15 +39,15 @@ export function DashboardSummaryKpis(props: { data: DashboardData }) {
     <section className="dashboard-kpi-grid" aria-label="Dashboard summary">
       <DashboardKpiCard
         badge={{
-          label: `${formatPercentage(onlineAgents, totalAgents)} online`,
-          tone: onlineAgents > 0 ? "success" : "warning",
+          label: `${formatPercentage(freshHeartbeatAgents, totalAgents)} current`,
+          tone: freshHeartbeatAgents > 0 ? "success" : "warning",
         }}
         href="/dashboard/agents"
         label="Agents"
         monitorBars={buildUptimeBars(fleetUptime, 24, fleetUptimeTone)}
         monitorLabel={`Agent heartbeat uptime ${fleetUptime}%`}
-        tone={onlineAgents > 0 ? "success" : "warning"}
-        value={`${formatNumber(onlineAgents)} / ${formatNumber(totalAgents)}`}
+        tone={freshHeartbeatAgents > 0 ? "success" : "warning"}
+        value={`${formatNumber(freshHeartbeatAgents)} / ${formatNumber(totalAgents)}`}
       />
       <DashboardKpiCard
         badge={{

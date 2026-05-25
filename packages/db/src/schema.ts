@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -167,10 +168,13 @@ export const projects = pgTable(
       table.organizationId,
       table.slug,
     ),
-    index("projects_organization_default_idx").on(
+    uniqueIndex("projects_organization_id_idx").on(
       table.organizationId,
-      table.isDefault,
+      table.id,
     ),
+    uniqueIndex("projects_organization_default_unique_idx")
+      .on(table.organizationId)
+      .where(sql`${table.isDefault} = true`),
   ],
 );
 
@@ -220,6 +224,11 @@ export const apiKeys = pgTable(
   (table) => [
     uniqueIndex("api_keys_prefix_idx").on(table.prefix),
     index("api_keys_project_created_idx").on(table.projectId, table.createdAt),
+    foreignKey({
+      columns: [table.organizationId, table.projectId],
+      foreignColumns: [projects.organizationId, projects.id],
+      name: "api_keys_project_scope_fk",
+    }).onDelete("cascade"),
   ],
 );
 
@@ -239,8 +248,14 @@ export const agents = pgTable(
     mode: agentMode("mode").notNull().default("long_running"),
     expectedCheckInSeconds: integer("expected_check_in_seconds"),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
-    tags: text("tags").array().notNull().default(sql`ARRAY[]::text[]`),
-    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    tags: text("tags")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     ...timestamps,
   },
   (table) => [
@@ -250,6 +265,11 @@ export const agents = pgTable(
     ),
     index("agents_project_status_idx").on(table.projectId, table.status),
     index("agents_project_last_seen_idx").on(table.projectId, table.lastSeenAt),
+    foreignKey({
+      columns: [table.organizationId, table.projectId],
+      foreignColumns: [projects.organizationId, projects.id],
+      name: "agents_project_scope_fk",
+    }).onDelete("cascade"),
   ],
 );
 
@@ -279,7 +299,10 @@ export const ingestionBatches = pgTable(
     failedAt: timestamp("failed_at", { withTimezone: true }),
     errorCode: text("error_code"),
     errorMessage: text("error_message"),
-    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     ...timestamps,
   },
   (table) => [
@@ -288,6 +311,11 @@ export const ingestionBatches = pgTable(
       table.receivedAt,
     ),
     index("ingestion_batches_api_key_idx").on(table.apiKeyId),
+    foreignKey({
+      columns: [table.organizationId, table.projectId],
+      foreignColumns: [projects.organizationId, projects.id],
+      name: "ingestion_batches_project_scope_fk",
+    }).onDelete("cascade"),
   ],
 );
 
@@ -326,6 +354,11 @@ export const ingestionOutbox = pgTable(
       table.lockedUntil,
     ),
     index("ingestion_outbox_batch_idx").on(table.batchId),
+    foreignKey({
+      columns: [table.organizationId, table.projectId],
+      foreignColumns: [projects.organizationId, projects.id],
+      name: "ingestion_outbox_project_scope_fk",
+    }).onDelete("cascade"),
   ],
 );
 
@@ -358,8 +391,14 @@ export const events = pgTable(
     spanId: text("span_id"),
     runId: text("run_id"),
     data: jsonb("data").$type<Record<string, unknown>>().notNull().default({}),
-    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
-    tags: text("tags").array().notNull().default(sql`ARRAY[]::text[]`),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    tags: text("tags")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
     ...timestamps,
   },
   (table) => [
@@ -379,6 +418,11 @@ export const events = pgTable(
     ),
     index("events_project_trace_idx").on(table.projectId, table.traceId),
     index("events_project_run_idx").on(table.projectId, table.runId),
+    foreignKey({
+      columns: [table.organizationId, table.projectId],
+      foreignColumns: [projects.organizationId, projects.id],
+      name: "events_project_scope_fk",
+    }).onDelete("cascade"),
   ],
 );
 
@@ -442,6 +486,11 @@ export const eventPropertyCatalog = pgTable(
       table.projectId,
       table.eventType,
     ),
+    foreignKey({
+      columns: [table.organizationId, table.projectId],
+      foreignColumns: [projects.organizationId, projects.id],
+      name: "event_property_catalog_project_scope_fk",
+    }).onDelete("cascade"),
   ],
 );
 
@@ -463,14 +512,25 @@ export const agentRuns = pgTable(
     status: text("status").notNull().default("running"),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
     endedAt: timestamp("ended_at", { withTimezone: true }),
-    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     ...timestamps,
   },
   (table) => [
     uniqueIndex("agent_runs_project_external_idx")
       .on(table.projectId, table.externalRunId)
       .where(sql`${table.externalRunId} IS NOT NULL`),
-    index("agent_runs_project_started_idx").on(table.projectId, table.startedAt),
+    index("agent_runs_project_started_idx").on(
+      table.projectId,
+      table.startedAt,
+    ),
+    foreignKey({
+      columns: [table.organizationId, table.projectId],
+      foreignColumns: [projects.organizationId, projects.id],
+      name: "agent_runs_project_scope_fk",
+    }).onDelete("cascade"),
   ],
 );
 
@@ -498,7 +558,10 @@ export const tradingDecisions = pgTable(
     action: text("action").notNull(),
     confidence: integer("confidence"),
     rationaleSummary: text("rationale_summary"),
-    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     decidedAt: timestamp("decided_at", { withTimezone: true }).notNull(),
   },
   (table) => [
@@ -506,7 +569,15 @@ export const tradingDecisions = pgTable(
       table.projectId,
       table.decidedAt,
     ),
-    index("trading_decisions_project_symbol_idx").on(table.projectId, table.symbol),
+    index("trading_decisions_project_symbol_idx").on(
+      table.projectId,
+      table.symbol,
+    ),
+    foreignKey({
+      columns: [table.organizationId, table.projectId],
+      foreignColumns: [projects.organizationId, projects.id],
+      name: "trading_decisions_project_scope_fk",
+    }).onDelete("cascade"),
   ],
 );
 
@@ -525,10 +596,18 @@ export const riskChecks = pgTable(
       .references(() => projects.id, { onDelete: "cascade" }),
     result: text("result").notNull(),
     reason: text("reason"),
-    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     checkedAt: timestamp("checked_at", { withTimezone: true }).notNull(),
   },
-  (table) => [index("risk_checks_project_checked_idx").on(table.projectId, table.checkedAt)],
+  (table) => [
+    index("risk_checks_project_checked_idx").on(
+      table.projectId,
+      table.checkedAt,
+    ),
+  ],
 );
 
 export const orders = pgTable(
@@ -554,7 +633,10 @@ export const orders = pgTable(
     price: text("price"),
     status: orderStatus("status").notNull().default("pending"),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
-    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     ...timestamps,
   },
   (table) => [
@@ -590,7 +672,10 @@ export const fills = pgTable(
     price: text("price").notNull(),
     fee: text("fee"),
     filledAt: timestamp("filled_at", { withTimezone: true }).notNull(),
-    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
   },
   (table) => [
     uniqueIndex("fills_project_external_idx")
@@ -611,11 +696,14 @@ export const positions = pgTable(
     projectId: uuid("project_id")
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
-    strategy: text("strategy"),
+    strategy: text("strategy").notNull().default(""),
     symbol: text("symbol").notNull(),
     quantity: text("quantity").notNull(),
     averagePrice: text("average_price"),
-    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     ...timestamps,
   },
   (table) => [
@@ -640,7 +728,10 @@ export const pnlSnapshots = pgTable(
     unrealizedPnl: text("unrealized_pnl"),
     equity: text("equity"),
     snapshotAt: timestamp("snapshot_at", { withTimezone: true }).notNull(),
-    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
   },
   (table) => [
     index("pnl_snapshots_project_snapshot_idx").on(
@@ -677,6 +768,11 @@ export const notifications = pgTable(
       table.status,
       table.createdAt,
     ),
+    foreignKey({
+      columns: [table.organizationId, table.projectId],
+      foreignColumns: [projects.organizationId, projects.id],
+      name: "notifications_project_scope_fk",
+    }).onDelete("cascade"),
   ],
 );
 
@@ -701,6 +797,11 @@ export const dashboardPreferences = pgTable(
     primaryKey({
       columns: [table.organizationId, table.membershipId, table.projectId],
     }),
+    foreignKey({
+      columns: [table.organizationId, table.projectId],
+      foreignColumns: [projects.organizationId, projects.id],
+      name: "dashboard_preferences_project_scope_fk",
+    }).onDelete("cascade"),
   ],
 );
 
@@ -721,7 +822,10 @@ export const artifacts = pgTable(
     contentType: text("content_type"),
     sizeBytes: integer("size_bytes"),
     checksum: text("checksum"),
-    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -743,8 +847,14 @@ export const otelSpans = pgTable(
     kind: text("kind"),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
     endedAt: timestamp("ended_at", { withTimezone: true }),
-    attributes: jsonb("attributes").$type<Record<string, unknown>>().notNull().default({}),
-    resource: jsonb("resource").$type<Record<string, unknown>>().notNull().default({}),
+    attributes: jsonb("attributes")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    resource: jsonb("resource")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -755,7 +865,10 @@ export const otelSpans = pgTable(
       table.traceId,
       table.spanId,
     ),
-    index("otel_spans_project_started_idx").on(table.projectId, table.startedAt),
+    index("otel_spans_project_started_idx").on(
+      table.projectId,
+      table.startedAt,
+    ),
   ],
 );
 
@@ -770,14 +883,20 @@ export const otelLogs = pgTable(
     spanId: text("span_id"),
     severityText: text("severity_text"),
     body: jsonb("body").$type<unknown>(),
-    attributes: jsonb("attributes").$type<Record<string, unknown>>().notNull().default({}),
+    attributes: jsonb("attributes")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     observedAt: timestamp("observed_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
   (table) => [
-    index("otel_logs_project_observed_idx").on(table.projectId, table.observedAt),
+    index("otel_logs_project_observed_idx").on(
+      table.projectId,
+      table.observedAt,
+    ),
     index("otel_logs_project_trace_idx").on(table.projectId, table.traceId),
   ],
 );
@@ -793,7 +912,10 @@ export const otelMetrics = pgTable(
     unit: text("unit"),
     kind: text("kind").notNull(),
     value: text("value"),
-    attributes: jsonb("attributes").$type<Record<string, unknown>>().notNull().default({}),
+    attributes: jsonb("attributes")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

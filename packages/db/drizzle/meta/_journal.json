@@ -8,6 +8,13 @@
       "when": 1779471233912,
       "tag": "0000_old_squadron_supreme",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779680772975,
+      "tag": "0001_sparkling_starfox",
+      "breakpoints": true
     }
   ]
 }

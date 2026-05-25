@@ -146,6 +146,8 @@ export type DashboardApiKey = {
 export async function getDashboardData(
   range: DashboardRange = "7d",
 ): Promise<DashboardData> {
+  await ensureWorkspaceInitialized();
+
   const [overview, analytics, agents, runs, trades, notifications, apiKeys] =
     await Promise.all([
       getJson<DashboardOverview>("/v1/overview"),
@@ -185,6 +187,8 @@ export async function getDashboardInspectorData(
   kind: DashboardInspectorKind,
   id: string,
 ): Promise<DashboardInspectorData> {
+  await ensureWorkspaceInitialized();
+
   const detail = await getInspectorPayload(kind, id);
   const data = detail.ok ? detail.data : undefined;
 
@@ -358,6 +362,30 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
   }
 
   return undefined;
+}
+
+async function ensureWorkspaceInitialized() {
+  if (dashboardApiKey) {
+    return;
+  }
+
+  const cookieHeader = (await cookies()).toString();
+
+  if (!cookieHeader) {
+    return;
+  }
+
+  try {
+    await fetch(`${apiUrl}/v1/workspace/init`, {
+      cache: "no-store",
+      headers: {
+        cookie: cookieHeader,
+      },
+      method: "POST",
+    });
+  } catch {
+    // Dashboard reads below will surface the actual auth/API state.
+  }
 }
 
 async function getJson<T>(path: string): Promise<

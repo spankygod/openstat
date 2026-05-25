@@ -34,6 +34,9 @@ export type ReadScope = {
 
 export type EventSource = "sdk" | "http" | "webhook" | "otel" | "system";
 
+const defaultAgentStaleSeconds = 180;
+const defaultAgentOfflineSeconds = 600;
+
 export interface IngestionSignalPublisher {
   publish(channel: string, message: string): Promise<void>;
 }
@@ -419,6 +422,7 @@ export async function listAgents(options: {
 
     return {
       ...agent,
+      status: getEffectiveAgentStatus(agent, new Date()),
       heartbeatHealth: {
         healthyHeartbeats: health.healthyHeartbeats,
         lastHeartbeatAt: health.lastHeartbeatAt,
@@ -452,7 +456,12 @@ export async function getAgent(options: {
     )
     .limit(1);
 
-  return agent;
+  return agent
+    ? {
+        ...agent,
+        status: getEffectiveAgentStatus(agent, new Date()),
+      }
+    : undefined;
 }
 
 export async function getAgentTimeline(options: {
@@ -1320,7 +1329,7 @@ async function projectTradingEvent(
         .insert(schema.positions)
         .values({
           projectId: row.projectId,
-          strategy: getString(data.strategy),
+          strategy: getString(data.strategy) ?? "",
           symbol: getRequiredString(data.symbol, "position.symbol"),
           quantity: getDecimalString(data.quantity, "position.quantity"),
           averagePrice: getOptionalDecimalString(data.average_price),
@@ -1573,22 +1582,59 @@ async function updateBatchStatuses(db: Database["db"], batchIds: string[]) {
 
 async function getAgentStatusCounts(db: Database["db"], scope: ReadScope) {
   const rows = await db
-    .select({ status: schema.agents.status, value: count() })
+    .select({
+      expectedCheckInSeconds: schema.agents.expectedCheckInSeconds,
+      lastSeenAt: schema.agents.lastSeenAt,
+      status: schema.agents.status,
+    })
     .from(schema.agents)
     .where(
       and(
         eq(schema.agents.organizationId, scope.organizationId),
         eq(schema.agents.projectId, scope.projectId),
       ),
-    )
-    .groupBy(schema.agents.status);
+    );
   const result = { online: 0, stale: 0, offline: 0, failing: 0, unknown: 0 };
+  const now = new Date();
 
   for (const row of rows) {
-    result[row.status] = row.value;
+    const status = getEffectiveAgentStatus(row, now);
+    result[status] += 1;
   }
 
   return result;
+}
+
+function getEffectiveAgentStatus(
+  agent: Pick<
+    typeof schema.agents.$inferSelect,
+    "expectedCheckInSeconds" | "lastSeenAt" | "status"
+  >,
+  now: Date,
+) {
+  if (agent.status === "failing" || agent.status === "unknown") {
+    return agent.status;
+  }
+
+  if (!agent.lastSeenAt) {
+    return agent.status === "online" ? "unknown" : agent.status;
+  }
+
+  const staleSeconds = agent.expectedCheckInSeconds ?? defaultAgentStaleSeconds;
+  const offlineSeconds = Math.max(staleSeconds * 2, defaultAgentOfflineSeconds);
+  const ageSeconds = Math.floor(
+    (now.valueOf() - agent.lastSeenAt.valueOf()) / 1000,
+  );
+
+  if (ageSeconds >= offlineSeconds) {
+    return "offline";
+  }
+
+  if (ageSeconds >= staleSeconds) {
+    return "stale";
+  }
+
+  return agent.status;
 }
 
 async function markAgentRecoveryNotificationsRead(
