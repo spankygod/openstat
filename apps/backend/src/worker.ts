@@ -1,5 +1,8 @@
 import {
   claimIngestionOutbox,
+  createProjectUpdatedMessage,
+  DEFAULT_PROJECT_CACHE_DOMAINS,
+  invalidateProjectReadCaches,
   processClaim,
   REDIS_CHANNELS,
   sweepAgentHealth,
@@ -57,6 +60,10 @@ async function runWorkerPass() {
     });
 
     console.info({ workerId, ...result }, "Processed ingestion outbox rows");
+
+    if (result.processed > 0) {
+      await publishProjectUpdatesAndInvalidateCaches(rows);
+    }
   }
 
   await sweepAgentHealth({
@@ -64,6 +71,68 @@ async function runWorkerPass() {
     defaultStaleSeconds: env.defaultAgentStaleSeconds,
     defaultOfflineSeconds: env.defaultAgentOfflineSeconds,
   });
+}
+
+async function publishProjectUpdatesAndInvalidateCaches(
+  rows: Awaited<ReturnType<typeof claimIngestionOutbox>>,
+) {
+  if (!ingestionSignalClient) {
+    return;
+  }
+
+  const client = ingestionSignalClient;
+  const projectIds = new Set(rows.map((row) => row.projectId));
+
+  await Promise.all(
+    [...projectIds].map(async (projectId) => {
+      const message = createProjectUpdatedMessage({
+        domains: [...DEFAULT_PROJECT_CACHE_DOMAINS],
+        projectId,
+      });
+
+      try {
+        await client.publish(
+          REDIS_CHANNELS.projectUpdated,
+          JSON.stringify(message),
+        );
+      } catch (error) {
+        console.warn(
+          {
+            error,
+            projectId,
+            workerId,
+          },
+          "Redis project update publish failed; cache TTLs remain active",
+        );
+      }
+
+      try {
+        const invalidated = await invalidateProjectReadCaches({
+          client,
+          domains: message.domains,
+          projectId,
+        });
+
+        console.info(
+          {
+            deleted: invalidated.deleted,
+            projectId,
+            workerId,
+          },
+          "Invalidated Redis project read caches",
+        );
+      } catch (error) {
+        console.warn(
+          {
+            error,
+            projectId,
+            workerId,
+          },
+          "Redis project cache invalidation failed; TTL fallback remains active",
+        );
+      }
+    }),
+  );
 }
 
 async function subscribeToRedisWakeups(): Promise<

@@ -24,6 +24,16 @@ export const REDIS_KEYS = {
     `${OPENSTAT_REDIS_PREFIX}:project:${projectId}:notifications:unread`,
 } as const;
 
+export const DEFAULT_PROJECT_CACHE_DOMAINS = [
+  "overview",
+  "runs",
+  "trades",
+  "notifications",
+  "analytics",
+] as const;
+
+export type ProjectCacheDomain = (typeof DEFAULT_PROJECT_CACHE_DOMAINS)[number];
+
 export type IngestionWakeupMessage = {
   type: "ingestion.outbox.created";
   projectId: string;
@@ -31,6 +41,13 @@ export type IngestionWakeupMessage = {
   outboxIds: string[];
   count: number;
   source: string;
+  createdAt: string;
+};
+
+export type ProjectUpdatedMessage = {
+  type: "project.updated";
+  projectId: string;
+  domains: ProjectCacheDomain[];
   createdAt: string;
 };
 
@@ -44,7 +61,8 @@ export interface IngestionSignalSubscription {
 
 export interface IngestionSignalClient extends IngestionSignalPublisher {
   close(): Promise<void>;
-  delete(key: string): Promise<void>;
+  delete(key: string): Promise<number>;
+  deleteByPattern(pattern: string): Promise<number>;
   getJson<T>(key: string): Promise<T | undefined>;
   ping(): Promise<boolean>;
   setJson(key: string, value: unknown, ttlSeconds: number): Promise<void>;
@@ -57,6 +75,80 @@ export interface IngestionSignalClient extends IngestionSignalPublisher {
 export type IngestionSignalLogger = Pick<Console, "error" | "info" | "warn">;
 
 type RedisClient = ReturnType<typeof createClient>;
+
+export function createProjectUpdatedMessage(options: {
+  projectId: string;
+  domains?: ProjectCacheDomain[];
+  createdAt?: Date;
+}): ProjectUpdatedMessage {
+  return {
+    type: "project.updated",
+    projectId: options.projectId,
+    domains: options.domains ?? [...DEFAULT_PROJECT_CACHE_DOMAINS],
+    createdAt: (options.createdAt ?? new Date()).toISOString(),
+  };
+}
+
+export function getProjectCacheInvalidationTargets(options: {
+  projectId: string;
+  domains?: ProjectCacheDomain[];
+}) {
+  const domains = options.domains ?? DEFAULT_PROJECT_CACHE_DOMAINS;
+  const keys: string[] = [];
+  const patterns: string[] = [];
+
+  for (const domain of domains) {
+    switch (domain) {
+      case "overview":
+        keys.push(REDIS_KEYS.projectOverview(options.projectId));
+        break;
+      case "runs":
+        patterns.push(
+          `${OPENSTAT_REDIS_PREFIX}:project:${options.projectId}:runs:*`,
+        );
+        break;
+      case "trades":
+        patterns.push(
+          `${OPENSTAT_REDIS_PREFIX}:project:${options.projectId}:trades:*`,
+        );
+        break;
+      case "notifications":
+        patterns.push(
+          `${OPENSTAT_REDIS_PREFIX}:project:${options.projectId}:notifications:*`,
+        );
+        break;
+      case "analytics":
+        patterns.push(
+          `${OPENSTAT_REDIS_PREFIX}:project:${options.projectId}:analytics:*`,
+        );
+        break;
+    }
+  }
+
+  return { keys, patterns };
+}
+
+export async function invalidateProjectReadCaches(options: {
+  client: Pick<IngestionSignalClient, "delete" | "deleteByPattern">;
+  projectId: string;
+  domains?: ProjectCacheDomain[];
+}) {
+  const targets = getProjectCacheInvalidationTargets({
+    projectId: options.projectId,
+    domains: options.domains,
+  });
+  let deleted = 0;
+
+  for (const key of targets.keys) {
+    deleted += await options.client.delete(key);
+  }
+
+  for (const pattern of targets.patterns) {
+    deleted += await options.client.deleteByPattern(pattern);
+  }
+
+  return { ...targets, deleted };
+}
 
 // Redis is an acceleration layer for short-lived signals and caches only.
 // Postgres remains canonical for ingestion, projections, auth, and reads.
@@ -140,7 +232,20 @@ export function createIngestionRedisClient(
     },
     async delete(key) {
       const client = await getPublisherClient();
-      await client.del(key);
+      return client.del(key);
+    },
+    async deleteByPattern(pattern) {
+      const client = await getPublisherClient();
+      let deleted = 0;
+
+      for await (const key of client.scanIterator({
+        COUNT: 100,
+        MATCH: pattern,
+      })) {
+        deleted += await client.del(key);
+      }
+
+      return deleted;
     },
     async getJson<T>(key: string) {
       const client = await getPublisherClient();

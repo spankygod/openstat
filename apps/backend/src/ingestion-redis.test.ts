@@ -1,4 +1,10 @@
-import { acceptIngestionBatch, REDIS_CHANNELS } from "@openstat/ingestion";
+import {
+  acceptIngestionBatch,
+  createProjectUpdatedMessage,
+  DEFAULT_PROJECT_CACHE_DOMAINS,
+  invalidateProjectReadCaches,
+  REDIS_CHANNELS,
+} from "@openstat/ingestion";
 import type { IngestEventInput } from "@openstat/schemas/ingestion";
 import { describe, expect, it, vi } from "vitest";
 
@@ -118,6 +124,73 @@ describe("ingestion Redis wake-up signals", () => {
 
     expect(accepted.count).toBe(0);
     expect(publisher.publish).not.toHaveBeenCalled();
+  });
+});
+
+describe("project cache invalidation", () => {
+  it("builds a safe project update message", () => {
+    const message = createProjectUpdatedMessage({
+      createdAt: new Date("2026-05-26T00:00:00.000Z"),
+      projectId: auth.projectId,
+    });
+
+    expect(message).toEqual({
+      type: "project.updated",
+      projectId: auth.projectId,
+      domains: [...DEFAULT_PROJECT_CACHE_DOMAINS],
+      createdAt: "2026-05-26T00:00:00.000Z",
+    });
+    expect(JSON.stringify(message)).not.toContain("payload");
+    expect(JSON.stringify(message)).not.toContain("secret");
+  });
+
+  it("deletes the expected project-scoped cache keys and patterns", async () => {
+    const client = {
+      delete: vi.fn().mockResolvedValue(1),
+      deleteByPattern: vi.fn().mockResolvedValue(3),
+    };
+
+    const invalidated = await invalidateProjectReadCaches({
+      client,
+      projectId: auth.projectId,
+    });
+
+    expect(client.delete).toHaveBeenCalledWith(
+      `openstat:project:${auth.projectId}:overview`,
+    );
+    expect(client.deleteByPattern).toHaveBeenCalledWith(
+      `openstat:project:${auth.projectId}:runs:*`,
+    );
+    expect(client.deleteByPattern).toHaveBeenCalledWith(
+      `openstat:project:${auth.projectId}:trades:*`,
+    );
+    expect(client.deleteByPattern).toHaveBeenCalledWith(
+      `openstat:project:${auth.projectId}:notifications:*`,
+    );
+    expect(client.deleteByPattern).toHaveBeenCalledWith(
+      `openstat:project:${auth.projectId}:analytics:*`,
+    );
+    expect(invalidated.deleted).toBe(13);
+  });
+
+  it("can invalidate a narrow changed domain set", async () => {
+    const client = {
+      delete: vi.fn().mockResolvedValue(0),
+      deleteByPattern: vi.fn().mockResolvedValue(2),
+    };
+
+    const invalidated = await invalidateProjectReadCaches({
+      client,
+      domains: ["trades"],
+      projectId: auth.projectId,
+    });
+
+    expect(client.delete).not.toHaveBeenCalled();
+    expect(client.deleteByPattern).toHaveBeenCalledOnce();
+    expect(client.deleteByPattern).toHaveBeenCalledWith(
+      `openstat:project:${auth.projectId}:trades:*`,
+    );
+    expect(invalidated.deleted).toBe(2);
   });
 });
 

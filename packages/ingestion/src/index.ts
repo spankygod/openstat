@@ -31,7 +31,11 @@ import {
 
 export { redactTelemetryPayload } from "./redaction.js";
 export {
+  createProjectUpdatedMessage,
   createIngestionRedisClient,
+  DEFAULT_PROJECT_CACHE_DOMAINS,
+  getProjectCacheInvalidationTargets,
+  invalidateProjectReadCaches,
   OPENSTAT_REDIS_PREFIX,
   REDIS_CHANNELS,
   REDIS_KEYS,
@@ -42,6 +46,8 @@ export type {
   IngestionSignalPublisher,
   IngestionSignalSubscription,
   IngestionWakeupMessage,
+  ProjectCacheDomain,
+  ProjectUpdatedMessage,
 } from "./redis-signals.js";
 
 export type ReadScope = {
