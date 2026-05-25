@@ -10,7 +10,10 @@ const publicPartBytes = 9;
 const secretPartBytes = 24;
 
 export class ApiKeyAuthError extends Error {
-  constructor(public readonly code: ApiKeyAuthErrorCode, message: string) {
+  constructor(
+    public readonly code: ApiKeyAuthErrorCode,
+    message: string,
+  ) {
     super(message);
     this.name = "ApiKeyAuthError";
   }
@@ -27,6 +30,20 @@ export interface ApiKeyAuthContext {
   apiKeyId: string;
   organizationId: string;
   projectId: string;
+}
+
+export type ApiKeyLookupRow = {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  secretHash: string;
+  revokedAt: Date | string | null;
+  expiresAt: Date | string | null;
+};
+
+export interface ApiKeyLookupCache {
+  get(prefix: string): Promise<ApiKeyLookupRow | undefined>;
+  set(prefix: string, row: ApiKeyLookupRow): Promise<void>;
 }
 
 export function generateApiKey() {
@@ -49,6 +66,7 @@ function generateKeyPart(byteLength: number) {
 export async function authenticateApiKey(options: {
   db: Database["db"];
   authorizationHeader: string | undefined;
+  cache?: ApiKeyLookupCache;
 }): Promise<ApiKeyAuthContext> {
   const key = getBearerToken(options.authorizationHeader);
 
@@ -62,20 +80,16 @@ export async function authenticateApiKey(options: {
     throw new ApiKeyAuthError("INVALID_API_KEY", "Invalid API key.");
   }
 
-  const [apiKey] = await options.db
-    .select({
-      id: schema.apiKeys.id,
-      organizationId: schema.apiKeys.organizationId,
-      projectId: schema.apiKeys.projectId,
-      secretHash: schema.apiKeys.secretHash,
-      revokedAt: schema.apiKeys.revokedAt,
-      expiresAt: schema.apiKeys.expiresAt,
-    })
-    .from(schema.apiKeys)
-    .where(eq(schema.apiKeys.prefix, parsed.prefix))
-    .limit(1);
+  const apiKey = await getApiKeyLookupRow({
+    cache: options.cache,
+    db: options.db,
+    prefix: parsed.prefix,
+  });
 
-  if (!apiKey || !safeEqual(apiKey.secretHash, hashApiKeySecret(parsed.secret))) {
+  if (
+    !apiKey ||
+    !safeEqual(apiKey.secretHash, hashApiKeySecret(parsed.secret))
+  ) {
     throw new ApiKeyAuthError("INVALID_API_KEY", "Invalid API key.");
   }
 
@@ -96,6 +110,55 @@ export async function authenticateApiKey(options: {
     apiKeyId: apiKey.id,
     organizationId: apiKey.organizationId,
     projectId: apiKey.projectId,
+  };
+}
+
+async function getApiKeyLookupRow(options: {
+  cache?: ApiKeyLookupCache;
+  db: Database["db"];
+  prefix: string;
+}) {
+  try {
+    const cached = await options.cache?.get(options.prefix);
+
+    if (cached) {
+      return normalizeApiKeyLookupRow(cached);
+    }
+  } catch {
+    // Cache failures must not block API key authentication.
+  }
+
+  const [apiKey] = await options.db
+    .select({
+      id: schema.apiKeys.id,
+      organizationId: schema.apiKeys.organizationId,
+      projectId: schema.apiKeys.projectId,
+      secretHash: schema.apiKeys.secretHash,
+      revokedAt: schema.apiKeys.revokedAt,
+      expiresAt: schema.apiKeys.expiresAt,
+    })
+    .from(schema.apiKeys)
+    .where(eq(schema.apiKeys.prefix, options.prefix))
+    .limit(1);
+
+  if (!apiKey) {
+    return undefined;
+  }
+
+  try {
+    await options.cache?.set(options.prefix, apiKey);
+  } catch {
+    // Cache writes are best-effort; Postgres remains canonical.
+  }
+
+  return apiKey;
+}
+
+function normalizeApiKeyLookupRow(row: ApiKeyLookupRow): ApiKeyLookupRow {
+  return {
+    ...row,
+    expiresAt: row.expiresAt ? new Date(row.expiresAt) : null,
+    revokedAt: row.revokedAt ? new Date(row.revokedAt) : null,
   };
 }
 

@@ -11,6 +11,11 @@ const state = vi.hoisted(() => ({
     transaction: vi.fn(),
     update: vi.fn(),
   },
+  ingestionSignalClient: undefined as
+    | {
+        delete: ReturnType<typeof vi.fn>;
+      }
+    | undefined,
   requireSessionScope: vi.fn(),
   tx: {
     insert: vi.fn(),
@@ -27,11 +32,13 @@ vi.mock("../context.js", () => ({
   database: {
     db: state.db,
   },
+  get ingestionSignalClient() {
+    return state.ingestionSignalClient;
+  },
 }));
 
 vi.mock("../auth-scope.js", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("../auth-scope.js")>();
+  const actual = await importOriginal<typeof import("../auth-scope.js")>();
 
   return {
     ...actual,
@@ -47,6 +54,7 @@ const scope = {
 describe("api key routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    state.ingestionSignalClient = undefined;
     state.requireSessionScope.mockResolvedValue(scope);
     state.db.transaction.mockImplementation(async (callback) =>
       callback(state.tx),
@@ -205,6 +213,9 @@ describe("api key routes", () => {
   });
 
   it("revokes an API key inside the current project scope", async () => {
+    state.ingestionSignalClient = {
+      delete: vi.fn().mockResolvedValue(1),
+    };
     const returning = vi.fn().mockResolvedValue([
       {
         id: "00000000-0000-4000-8000-000000000001",
@@ -250,12 +261,18 @@ describe("api key routes", () => {
         }),
       }),
     );
+    expect(state.ingestionSignalClient.delete).toHaveBeenCalledWith(
+      "openstat:api-key:ostat_public",
+    );
     expect(body.apiKey.id).toBe("00000000-0000-4000-8000-000000000001");
 
     await app.close();
   });
 
   it("rotates an active API key inside the current project scope", async () => {
+    state.ingestionSignalClient = {
+      delete: vi.fn().mockResolvedValue(1),
+    };
     const updateReturning = vi.fn().mockResolvedValue([
       {
         id: "00000000-0000-4000-8000-000000000001",
@@ -330,9 +347,10 @@ describe("api key routes", () => {
         }),
       }),
     );
-    expect(body.rotatedApiKey.id).toBe(
-      "00000000-0000-4000-8000-000000000001",
+    expect(state.ingestionSignalClient.delete).toHaveBeenCalledWith(
+      "openstat:api-key:ostat_public",
     );
+    expect(body.rotatedApiKey.id).toBe("00000000-0000-4000-8000-000000000001");
     expect(body.apiKey.id).toBe("00000000-0000-4000-8000-000000000002");
     expect(body.apiKey.prefix).toBe("ostat_rotated");
     expect(body.key).toMatch(/^ostat_[A-Za-z0-9_-]+_[A-Za-z0-9_-]+$/u);

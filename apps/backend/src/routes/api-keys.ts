@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { requireSessionScope } from "../auth-scope.js";
 import { database } from "../context.js";
+import { deleteApiKeyLookupCache } from "../api-key-cache.js";
 import {
   createApiKeyBodySchema,
   createApiKeyResponseSchema,
@@ -288,6 +289,7 @@ export async function registerApiKeyRoutes(app: FastifyInstance) {
 
         return {
           apiKey: createdApiKey,
+          revokedPrefix: rotatedApiKey.prefix,
           rotatedApiKey: {
             id: rotatedApiKey.id,
             revokedAt: rotatedApiKey.revokedAt,
@@ -305,9 +307,12 @@ export async function registerApiKeyRoutes(app: FastifyInstance) {
         });
       }
 
+      await deleteApiKeyLookupCache(rotation.revokedPrefix);
+
       return {
-        ...rotation,
+        apiKey: rotation.apiKey,
         key: replacementKey.key,
+        rotatedApiKey: rotation.rotatedApiKey,
       };
     },
   );
@@ -384,6 +389,8 @@ export async function registerApiKeyRoutes(app: FastifyInstance) {
           prefix: revokedApiKey.prefix,
         },
       });
+
+      await deleteApiKeyLookupCache(revokedApiKey.prefix);
 
       return {
         apiKey: {

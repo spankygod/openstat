@@ -10,6 +10,7 @@ import { and, asc, eq } from "drizzle-orm";
 import type { FastifyRequest } from "fastify";
 
 import { auth, database } from "./context.js";
+import { getApiKeyLookupCache } from "./api-key-cache.js";
 
 export class AuthScopeError extends Error {
   constructor(
@@ -27,6 +28,7 @@ export async function authenticateIngestionScope(
 ): Promise<ApiKeyAuthContext> {
   try {
     return await authenticateApiKey({
+      cache: getApiKeyLookupCache(),
       db: database.db,
       authorizationHeader,
     });
@@ -88,7 +90,9 @@ async function resolveSessionReadScope(
   const requestedOrganizationId = getHeaderValue(
     request.headers["x-openstat-organization-id"],
   );
-  const requestedProjectId = getHeaderValue(request.headers["x-openstat-project-id"]);
+  const requestedProjectId = getHeaderValue(
+    request.headers["x-openstat-project-id"],
+  );
 
   const membership = requestedOrganizationId
     ? await findMembership(session.user.id, requestedOrganizationId)
