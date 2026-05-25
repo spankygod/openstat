@@ -8,6 +8,7 @@ import Fastify from "fastify";
 import { env } from "./config/env.js";
 import { ingestionSignalClient } from "./context.js";
 import { registerErrorHandler } from "./plugins/errors.js";
+import { startProjectRefreshSubscription } from "./project-refresh-events.js";
 import {
   createRedisRateLimitStore,
   getIngestionRateLimitKey,
@@ -69,6 +70,16 @@ export async function buildApp() {
       ? createRedisRateLimitStore(ingestionSignalClient)
       : undefined,
     timeWindow: env.ingestionRateLimitWindow,
+  });
+
+  const projectRefreshSubscription = await startProjectRefreshSubscription({
+    client: ingestionSignalClient,
+    logger: app.log,
+  });
+
+  app.addHook("onClose", async () => {
+    await projectRefreshSubscription?.close();
+    await ingestionSignalClient?.close();
   });
 
   await app.register(swagger, {
