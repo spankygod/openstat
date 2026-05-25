@@ -7,6 +7,12 @@ import {
 } from "@openstat/ingestion";
 import { EventEmitter } from "node:events";
 
+import {
+  recordProjectRefreshEmitted,
+  recordProjectRefreshInvalidMessage,
+  recordProjectRefreshSubscriptionError,
+} from "./redis-telemetry.js";
+
 export type ProjectRefreshNotification = {
   projectId: string;
   domains: ProjectCacheDomain[];
@@ -28,6 +34,7 @@ export function onProjectRefresh(
 }
 
 export function emitProjectRefresh(notification: ProjectRefreshNotification) {
+  recordProjectRefreshEmitted();
   projectRefreshEmitter.emit("project.refresh", notification);
 }
 
@@ -48,6 +55,7 @@ export async function startProjectRefreshSubscription(options: {
         const notification = parseProjectUpdatedMessage(message);
 
         if (!notification) {
+          recordProjectRefreshInvalidMessage();
           logger.warn(
             { channel: REDIS_CHANNELS.projectUpdated },
             "Ignoring invalid Redis project refresh message",
@@ -59,6 +67,7 @@ export async function startProjectRefreshSubscription(options: {
       },
     );
   } catch (error) {
+    recordProjectRefreshSubscriptionError();
     logger.warn(
       { error },
       "Redis project refresh subscription failed; API reads remain available",

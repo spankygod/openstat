@@ -11,6 +11,14 @@ import {
 
 import { env } from "./config/env.js";
 import { database, ingestionSignalClient } from "./context.js";
+import {
+  recordProjectInvalidation,
+  recordProjectInvalidationError,
+  recordProjectUpdatePublish,
+  recordProjectUpdatePublishError,
+  recordWakeupInvalidMessage,
+  recordWakeupMessage,
+} from "./redis-telemetry.js";
 
 const workerId = `worker_${crypto.randomUUID()}`;
 let shuttingDown = false;
@@ -95,7 +103,9 @@ async function publishProjectUpdatesAndInvalidateCaches(
           REDIS_CHANNELS.projectUpdated,
           JSON.stringify(message),
         );
+        recordProjectUpdatePublish();
       } catch (error) {
+        recordProjectUpdatePublishError();
         console.warn(
           {
             error,
@@ -112,6 +122,7 @@ async function publishProjectUpdatesAndInvalidateCaches(
           domains: message.domains,
           projectId,
         });
+        recordProjectInvalidation(invalidated.deleted);
 
         console.info(
           {
@@ -122,6 +133,7 @@ async function publishProjectUpdatesAndInvalidateCaches(
           "Invalidated Redis project read caches",
         );
       } catch (error) {
+        recordProjectInvalidationError();
         console.warn(
           {
             error,
@@ -147,6 +159,13 @@ async function subscribeToRedisWakeups(): Promise<
       REDIS_CHANNELS.ingestion,
       (message) => {
         const signal = parseWakeupMessage(message);
+
+        if (!signal) {
+          recordWakeupInvalidMessage();
+        } else {
+          recordWakeupMessage(signal.latencyMs);
+        }
+
         console.info(
           {
             workerId,
@@ -176,6 +195,7 @@ function parseWakeupMessage(message: string) {
     const parsed = JSON.parse(message) as {
       batchId?: unknown;
       count?: unknown;
+      createdAt?: unknown;
       projectId?: unknown;
       type?: unknown;
     };
@@ -187,12 +207,26 @@ function parseWakeupMessage(message: string) {
     return {
       batchId: typeof parsed.batchId === "string" ? parsed.batchId : undefined,
       count: typeof parsed.count === "number" ? parsed.count : undefined,
+      latencyMs:
+        typeof parsed.createdAt === "string"
+          ? getLatencyMs(parsed.createdAt)
+          : undefined,
       projectId:
         typeof parsed.projectId === "string" ? parsed.projectId : undefined,
     };
   } catch {
     return undefined;
   }
+}
+
+function getLatencyMs(createdAt: string) {
+  const timestamp = new Date(createdAt).valueOf();
+
+  if (Number.isNaN(timestamp)) {
+    return undefined;
+  }
+
+  return Math.max(0, Date.now() - timestamp);
 }
 
 function wakeWorker() {

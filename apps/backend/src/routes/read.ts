@@ -59,6 +59,13 @@ import {
   updateDashboardPreferencesBodySchema,
   updateNotificationResponseSchema,
 } from "../openapi/schemas.js";
+import {
+  recordProjectCacheHit,
+  recordProjectCacheMiss,
+  recordProjectCacheReadError,
+  recordProjectCacheWrite,
+  recordProjectCacheWriteError,
+} from "../redis-telemetry.js";
 
 const listQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).optional(),
@@ -1384,9 +1391,13 @@ async function readThroughProjectCache<T>(options: {
     const cached = await ingestionSignalClient.getJson<T>(options.key);
 
     if (cached !== undefined) {
+      recordProjectCacheHit();
       return cached;
     }
+
+    recordProjectCacheMiss();
   } catch (error) {
+    recordProjectCacheReadError();
     console.warn(
       { cacheKey: options.key, error },
       "Redis project cache read failed; falling back to Postgres",
@@ -1397,7 +1408,9 @@ async function readThroughProjectCache<T>(options: {
 
   try {
     await ingestionSignalClient.setJson(options.key, value, options.ttlSeconds);
+    recordProjectCacheWrite();
   } catch (error) {
+    recordProjectCacheWriteError();
     console.warn(
       { cacheKey: options.key, error },
       "Redis project cache write failed; serving Postgres result",

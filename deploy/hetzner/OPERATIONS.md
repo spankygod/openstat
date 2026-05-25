@@ -71,6 +71,21 @@ Health check Redis with:
 docker compose exec redis redis-cli ping
 ```
 
+The API `/ready` response also reports optional Redis status and in-process
+Redis telemetry counters. Redis should be `ok` when configured, but `/ready`
+still returns ready if Redis is temporarily `error` because Postgres remains the
+source of truth and Redis has fallback paths.
+
+Watch these `/ready.telemetry.redis` counters after deploys and incidents:
+
+- `projectCache.hits`, `projectCache.misses`, `projectCache.readErrors`, and
+  `projectCache.writeErrors`
+- `apiKeyCache.hits`, `apiKeyCache.misses`, and `apiKeyCache.errors`
+- `projectUpdatePublish.errors`
+- `projectInvalidation.deletedKeys` and `projectInvalidation.errors`
+- `rateLimit.increments` and `rateLimit.errors`
+- `wakeups.messages`, `wakeups.lastLatencyMs`, and `wakeups.maxLatencyMs`
+
 During incidents, it is safe to clear project cache keys because they are
 rebuildable from Postgres:
 
@@ -80,6 +95,16 @@ docker compose exec redis redis-cli --scan --pattern 'openstat:project:<project-
 
 Review keys first, then delete the matched cache keys only for the affected
 project.
+
+Smoke test Redis acceleration after deploy:
+
+1. `docker compose exec redis redis-cli ping`
+2. Call `GET /ready` and confirm `redis: "ok"` when `REDIS_URL` is configured.
+3. Ingest one event and confirm worker logs show an ingestion wake-up and cache
+   invalidation for the project.
+4. Load dashboard endpoints twice and confirm cache hit/miss counters move.
+5. Temporarily stop Redis, call a dashboard endpoint, and confirm Postgres still
+   serves the response while Redis error counters move.
 
 ## Alerts
 

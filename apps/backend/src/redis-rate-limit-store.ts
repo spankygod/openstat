@@ -1,5 +1,10 @@
 import { REDIS_KEYS, type IngestionSignalClient } from "@openstat/ingestion";
 
+import {
+  recordRateLimitError,
+  recordRateLimitIncrement,
+} from "./redis-telemetry.js";
+
 type RateLimitCallback = (
   error: Error | null,
   result?: { current: number; ttl: number },
@@ -32,8 +37,14 @@ export function createRedisRateLimitStore(client: RedisRateLimitClient) {
 
       client
         .incrementRateLimitCounter(counterKey, timeWindow)
-        .then((result) => callback(null, result))
-        .catch((error: Error) => callback(error));
+        .then((result) => {
+          recordRateLimitIncrement();
+          callback(null, result);
+        })
+        .catch((error: Error) => {
+          recordRateLimitError();
+          callback(error);
+        });
     }
   };
 }
