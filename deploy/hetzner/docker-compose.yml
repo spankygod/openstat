@@ -88,6 +88,7 @@ services:
       - caddy-config:/config
     environment:
       API_DOMAIN: ${API_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
       APP_WEB_URL: ${APP_WEB_URL}
     logging: *common-logging
     restart: unless-stopped
