@@ -3,13 +3,28 @@ import {
   DashboardPanel,
   DashboardStatusChip,
   formatDateTime,
+  formatRelativeTime,
 } from "./dashboard-components";
+import {
+  formatEventType,
+  formatReferenceLabel,
+  getAgentLabel,
+  getEventState,
+  summarizeEvent,
+} from "./dashboard-event-utils";
 import type { DashboardData, DashboardRange } from "./dashboard-overview-types";
 
 export function DashboardLatestTables(props: {
   data: DashboardData;
   range: DashboardRange;
 }) {
+  const agentNameById = new Map(
+    props.data.agents.map((agent) => [
+      agent.id,
+      agent.name || agent.externalId || agent.id,
+    ]),
+  );
+
   return (
     <section className="dashboard-table-grid">
       <DashboardPanel
@@ -88,7 +103,7 @@ export function DashboardLatestTables(props: {
       </DashboardPanel>
 
       <DashboardPanel
-        actions={<a href="/dashboard?inspect=events">Explore</a>}
+        actions={<a href={`/dashboard/events?range=${props.range}`}>Explore</a>}
         className="dashboard-events-panel dashboard-latest-panel"
         title="Latest events"
         titleCount={props.data.overview?.events.latest.length ?? 0}
@@ -98,26 +113,68 @@ export function DashboardLatestTables(props: {
           items={props.data.overview?.events.latest ?? []}
           columns={[
             {
-              key: "event",
-              label: "Event",
+              key: "summary",
+              label: "Summary",
               render: (event) => (
-                <a
-                  className="dashboard-table-primary"
-                  href={`/dashboard?range=${props.range}&inspect=event&id=${event.id}`}
-                >
-                  {event.eventType}
-                </a>
+                <span className="dashboard-event-summary">
+                  <a
+                    className="dashboard-table-primary dashboard-event-summary-link"
+                    href={`/dashboard?range=${props.range}&inspect=event&id=${event.id}`}
+                  >
+                    {summarizeEvent(event)}
+                  </a>
+                  <span className="dashboard-event-links">
+                    <span>{formatEventType(event.eventType)}</span>
+                    {event.traceId ? (
+                      <a
+                        href={`/dashboard?range=${props.range}&inspect=trace&id=${event.traceId}`}
+                      >
+                        trace
+                      </a>
+                    ) : null}
+                    {event.runId ? (
+                      <span title={event.runId}>
+                        run{" "}
+                        {formatReferenceLabel(event.runId, {
+                          dropPrefix: "run",
+                        })}
+                      </span>
+                    ) : null}
+                  </span>
+                </span>
+              ),
+            },
+            {
+              key: "status",
+              label: "Status",
+              render: (event) => (
+                <DashboardStatusChip status={getEventState(event)} />
+              ),
+            },
+            {
+              key: "agent",
+              label: "Agent",
+              render: (event) => (
+                <span className="dashboard-table-secondary">
+                  {getAgentLabel(event.agentId, agentNameById)}
+                </span>
               ),
             },
             {
               key: "source",
               label: "Source",
-              render: (event) => event.source,
+              render: (event) => (
+                <span className="dashboard-source-label">{event.source}</span>
+              ),
             },
             {
               key: "time",
               label: "Time",
-              render: (event) => formatDateTime(event.timestamp),
+              render: (event) => (
+                <span title={formatDateTime(event.timestamp)}>
+                  {formatRelativeTime(event.timestamp)}
+                </span>
+              ),
             },
           ]}
         />

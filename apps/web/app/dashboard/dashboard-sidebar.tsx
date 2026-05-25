@@ -8,6 +8,7 @@ import {
   CircleHelp,
   Home,
   KeyRound,
+  ListTree,
   LogOut,
   Menu,
   PanelLeftClose,
@@ -33,6 +34,7 @@ type NavItem = {
 const primaryNav: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: Home, isActive: true },
   { label: "Agents", href: "/dashboard/agents", icon: Bot },
+  { label: "Events", href: "/dashboard/events", icon: ListTree },
   { label: "Runs", href: "/dashboard/runs", icon: Activity },
   { label: "Trades", href: "/dashboard/trades", icon: TrendingUp },
   { label: "Alerts", href: "/dashboard/alerts", icon: Bell, meta: "New" },

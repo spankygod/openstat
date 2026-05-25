@@ -192,6 +192,42 @@ export function formatDateTime(value?: string | null) {
   return new Date(value).toLocaleString();
 }
 
+export function formatRelativeTime(value?: string | null) {
+  if (!value) {
+    return "Never";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.valueOf())) {
+    return "Unknown";
+  }
+
+  const seconds = Math.round((date.valueOf() - Date.now()) / 1000);
+  const absoluteSeconds = Math.abs(seconds);
+  const formatter = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+
+  if (absoluteSeconds < 60) {
+    return formatter.format(seconds, "second");
+  }
+
+  const minutes = Math.round(seconds / 60);
+
+  if (Math.abs(minutes) < 60) {
+    return formatter.format(minutes, "minute");
+  }
+
+  const hours = Math.round(minutes / 60);
+
+  if (Math.abs(hours) < 24) {
+    return formatter.format(hours, "hour");
+  }
+
+  const days = Math.round(hours / 24);
+
+  return formatter.format(days, "day");
+}
+
 export function formatNumber(value?: number) {
   return (value ?? 0).toLocaleString();
 }

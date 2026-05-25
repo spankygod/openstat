@@ -101,10 +101,26 @@ export type DashboardAgent = {
 };
 
 export type DashboardEvent = {
+  agentId?: string | null;
+  createdAt?: string;
+  data?: Record<string, unknown>;
   id: string;
   eventType: string;
-  timestamp: string;
+  metadata?: Record<string, unknown>;
+  runId?: string | null;
+  spanId?: string | null;
   source: string;
+  tags?: string[];
+  timestamp: string;
+  traceId?: string | null;
+};
+
+export type DashboardEventsData = {
+  errors: string[];
+  events: DashboardEvent[];
+  pagination?: {
+    nextCursor?: string | null;
+  };
 };
 
 export type DashboardRun = {
@@ -180,6 +196,24 @@ export async function getDashboardData(
       notifications,
       apiKeys,
     ].flatMap((result) => (result.ok ? [] : [result.error])),
+  };
+}
+
+export async function getDashboardEvents(
+  range: DashboardRange = "7d",
+  limit = 50,
+): Promise<DashboardEventsData> {
+  await ensureWorkspaceInitialized();
+
+  const events = await getJson<{
+    events: DashboardEvent[];
+    pagination?: DashboardEventsData["pagination"];
+  }>(`/v1/events?limit=${limit}&range=${range}`);
+
+  return {
+    errors: events.ok ? [] : [events.error],
+    events: events.ok ? events.data.events : [],
+    pagination: events.ok ? events.data.pagination : undefined,
   };
 }
 
