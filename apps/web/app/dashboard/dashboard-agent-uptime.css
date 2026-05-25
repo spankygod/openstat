@@ -1,6 +1,62 @@
+.agent-overview-row {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.9fr) minmax(0, 1.1fr);
+  align-items: stretch;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.dashboard-route-kpis.agent-overview-kpis {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.agent-overview-kpis .dashboard-kpi {
+  min-height: 96px;
+  padding: 12px 12px 42px;
+  border-radius: min(20px, var(--radius-3xl));
+}
+
+.agent-overview-kpis .dashboard-kpi strong {
+  font-size: 22px;
+  line-height: 28px;
+}
+
+.agent-overview-kpis .dashboard-kpi-sparkline {
+  height: 44px;
+}
+
+.agent-overview-kpis .dashboard-kpi-monitor-bars {
+  right: 12px;
+  bottom: 14px;
+  left: 12px;
+  gap: 3px;
+  min-height: 16px;
+}
+
+.agent-overview-kpis .dashboard-kpi-monitor-bar {
+  height: 14px;
+}
+
+.agent-uptime-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .agent-uptime-monitor {
   display: grid;
   gap: 14px;
+}
+
+.agent-uptime-panel .agent-uptime-monitor {
+  flex: 1;
+  gap: 0;
+  overflow: hidden;
+  padding: 0 4px 4px;
+  border-radius: 20px;
+  background: var(--surface-secondary);
 }
 
 .agent-uptime-summary {
@@ -9,6 +65,11 @@
   justify-content: space-between;
   gap: 16px;
   min-width: 0;
+}
+
+.agent-uptime-panel .agent-uptime-summary {
+  padding: 12px;
+  background: var(--surface-secondary);
 }
 
 .agent-uptime-summary div,
@@ -86,6 +147,12 @@
   align-items: stretch;
 }
 
+.agent-uptime-panel .agent-uptime-bars {
+  padding: 12px 8px 10px;
+  border-radius: 16px 16px 0 0;
+  background: var(--panel);
+}
+
 .agent-uptime-bar {
   display: block;
   min-width: 2px;
@@ -111,16 +178,32 @@
   gap: 8px;
 }
 
+.agent-uptime-panel .agent-uptime-agent-grid {
+  padding: 0 8px 8px;
+  border-radius: 0 0 16px 16px;
+  background: var(--panel);
+}
+
 .agent-uptime-agent {
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 7px;
   min-height: 58px;
-  padding: 9px 10px;
-  border: 1px solid var(--line);
-  border-radius: min(18px, var(--radius-3xl));
-  background: var(--surface-secondary);
+  padding: 8px 2px;
+  background: transparent;
+}
+
+@media (max-width: 1100px) {
+  .agent-overview-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-route-kpis.agent-overview-kpis {
+    grid-template-columns: 1fr;
+  }
 }
 
 .agent-uptime-agent-header {

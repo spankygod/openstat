@@ -40,27 +40,29 @@ export default async function AgentsPage(props: AgentsPageProps) {
     data.overview?.agents.byStatus.active ??
     data.overview?.agents.byStatus.ok ??
     0;
-  const attentionCount = data.analytics?.totals.unreadNotifications ?? 0;
-  const heartbeatTotals = data.agents.reduce(
-    (totals, agent) => {
-      totals.healthy += agent.heartbeatHealth?.healthyHeartbeats ?? 0;
-      totals.received += agent.heartbeatHealth?.receivedHeartbeats ?? 0;
-
-      return totals;
-    },
-    { healthy: 0, received: 0 },
+  const totals = data.analytics?.totals ?? {};
+  const recentRuns = totals.decisions ?? data.runs.length;
+  const staleAgents = Math.max(0, totalAgents - freshHeartbeatAgents);
+  const failedRuns = data.runs.filter((run) =>
+    isAttentionStatus(run.status),
+  ).length;
+  const attentionCount =
+    (totals.unreadNotifications ?? 0) + staleAgents + failedRuns;
+  const attentionTone = attentionCount > 0 ? "warning" : "success";
+  const recentRunsBadge =
+    data.runs.length > 0
+      ? `${formatNumber(data.runs.length)} latest`
+      : `${range} window`;
+  const operationalIssues = staleAgents + failedRuns;
+  const attentionBadge =
+    attentionCount > 0 && operationalIssues > 0
+      ? `${formatNumber(operationalIssues)} operational`
+      : attentionCount > 0
+        ? "Needs review"
+        : "Clear";
+  const attentionSparkline = series.some(
+    (point) => point.failures > 0 || point.errors > 0,
   );
-  const fleetUptime =
-    heartbeatTotals.received > 0
-      ? Math.round((heartbeatTotals.healthy / heartbeatTotals.received) * 100)
-      : 0;
-  const fleetUptimeTone = getUptimeTone(fleetUptime);
-  const fleetUptimeState =
-    fleetUptime >= 95
-      ? "Operational"
-      : fleetUptime >= 80
-        ? "Degraded"
-        : "Needs attention";
 
   return (
     <DashboardRouteShell
@@ -70,68 +72,81 @@ export default async function AgentsPage(props: AgentsPageProps) {
       range={range}
       title="Agents"
     >
-      <section className="dashboard-kpi-grid dashboard-route-kpis">
-        <DashboardKpiCard
-          badge={{
-            label: `${formatPercentage(freshHeartbeatAgents, totalAgents)} current`,
-            tone: freshHeartbeatAgents > 0 ? "success" : "warning",
-          }}
-          href="/dashboard/agents"
-          label="Current heartbeat"
-          series={series}
-          seriesKey="activeAgents"
-          tone={freshHeartbeatAgents > 0 ? "success" : "warning"}
-          value={formatNumber(freshHeartbeatAgents)}
-        />
-        <DashboardKpiCard
-          badge={{
-            label: `${formatNumber(totalAgents)} tracked`,
-            tone: "neutral",
-          }}
-          href="/dashboard/agents"
-          label="Total agents"
-          value={formatNumber(totalAgents)}
-        />
-        <DashboardKpiCard
-          badge={{
-            label: fleetUptimeState,
-            tone:
-              fleetUptime >= 95
-                ? "success"
-                : fleetUptime >= 80
-                  ? "warning"
-                  : "danger",
-          }}
-          href="/dashboard/agents"
-          label="Heartbeat uptime"
-          monitorBars={buildKpiUptimeBars(fleetUptime, 24, fleetUptimeTone)}
-          monitorLabel={`Agent heartbeat uptime ${fleetUptime}% over ${range}`}
-          tone={
-            fleetUptime >= 95
-              ? "success"
-              : fleetUptime >= 80
-                ? "warning"
-                : "danger"
-          }
-          value={`${fleetUptime}%`}
-        />
-        <DashboardKpiCard
-          badge={{
-            label: attentionCount > 0 ? "Needs review" : "Clear",
-            tone: attentionCount > 0 ? "warning" : "success",
-          }}
-          href="/dashboard/alerts"
-          label="Attention"
-          tone={attentionCount > 0 ? "warning" : "success"}
-          value={formatNumber(attentionCount)}
-        />
+      <section className="agent-overview-row">
+        <div className="dashboard-kpi-grid dashboard-route-kpis agent-overview-kpis">
+          <DashboardKpiCard
+            badge={{
+              label: `${formatPercentage(freshHeartbeatAgents, totalAgents)} current`,
+              tone: freshHeartbeatAgents > 0 ? "success" : "warning",
+            }}
+            href="/dashboard/agents"
+            label="Current heartbeat"
+            series={series}
+            seriesKey="activeAgents"
+            tone={freshHeartbeatAgents > 0 ? "success" : "warning"}
+            value={formatNumber(freshHeartbeatAgents)}
+          />
+          <DashboardKpiCard
+            badge={{
+              label: `${formatNumber(totalAgents)} tracked`,
+              tone: "neutral",
+            }}
+            href="/dashboard/agents"
+            label="Total agents"
+            value={formatNumber(totalAgents)}
+          />
+          <DashboardKpiCard
+            badge={{
+              label: recentRunsBadge,
+              tone: recentRuns > 0 ? "neutral" : "warning",
+            }}
+            href="/dashboard/runs"
+            label="Recent runs"
+            series={series}
+            seriesKey="decisions"
+            tone={recentRuns > 0 ? "success" : "warning"}
+            value={formatNumber(recentRuns)}
+          />
+          <DashboardKpiCard
+            badge={{
+              label: attentionBadge,
+              tone: attentionTone,
+            }}
+            href="/dashboard/alerts"
+            label="Attention"
+            sparklineSeries={
+              attentionSparkline
+                ? [
+                    {
+                      points: series.map((point) => point.failures),
+                      tone: "warning",
+                    },
+                    {
+                      points: series.map((point) => point.errors),
+                      tone: "danger",
+                    },
+                  ]
+                : undefined
+            }
+            tone={attentionTone}
+            value={formatNumber(attentionCount)}
+          />
+        </div>
+
+        <DashboardPanel
+          className="dashboard-latest-panel agent-uptime-panel"
+          title="Monitoring"
+          titleCount={data.agents.length}
+        >
+          <AgentsUptimeMonitor agents={data.agents} range={range} />
+        </DashboardPanel>
       </section>
 
-      <DashboardPanel className="dashboard-route-panel" title="Agents Uptime">
-        <AgentsUptimeMonitor agents={data.agents} range={range} />
-      </DashboardPanel>
-
-      <DashboardPanel className="dashboard-route-panel" title="Agent health">
+      <DashboardPanel
+        className="dashboard-events-panel dashboard-latest-panel"
+        title="Agent health"
+        titleCount={data.agents.length}
+      >
         <DashboardDataTable
           empty="No agents yet."
           items={data.agents}
@@ -200,7 +215,7 @@ function AgentsUptimeMonitor(props: {
     <div className="agent-uptime-monitor">
       <div className="agent-uptime-summary">
         <div>
-          <span className="agent-uptime-title">Agents Uptime</span>
+          <span className="agent-uptime-title">Uptime</span>
           <span className="agent-uptime-value">{uptimePercent}%</span>
           <small>
             {formatNumber(totals.received)} heartbeats in {props.range}
@@ -264,16 +279,6 @@ function getUptimeTone(uptimePercent: number) {
   return uptimePercent >= 95 ? "good" : uptimePercent >= 80 ? "watch" : "bad";
 }
 
-function buildKpiUptimeBars(
-  uptimePercent: number,
-  count: number,
-  degradedTone: "good" | "watch" | "bad",
-) {
-  return buildUptimeBars(uptimePercent, count, degradedTone).map((tone) => ({
-    tone,
-  }));
-}
-
 function buildUptimeBars(
   uptimePercent: number,
   count: number,
@@ -301,4 +306,14 @@ function formatPercentage(value: number, total: number) {
   }
 
   return `${Math.round(percentage)}%`;
+}
+
+function isAttentionStatus(status: string) {
+  const normalized = status.toLowerCase();
+
+  return (
+    normalized.includes("fail") ||
+    normalized.includes("error") ||
+    normalized.includes("reject")
+  );
 }
