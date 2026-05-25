@@ -1,17 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/create-next-app).
+# OpenStat Web
+
+This is the Next.js dashboard app for OpenStat.
+
+## Environment
+
+Copy `.env.example` to `.env.local` for local development.
+
+```bash
+cp .env.example .env.local
+```
+
+Important deployment variables:
+
+- `NEXT_PUBLIC_OPENSTAT_API_URL`: public backend origin used by dashboard reads, auth, and logout calls. Do not leave this as `localhost` in production.
+
+For split deployments, set the backend env to trust the web origin:
+
+```bash
+# apps/backend
+API_PUBLIC_URL=https://api.example.com
+BETTER_AUTH_URL=https://api.example.com
+APP_WEB_URL=https://app.example.com
+
+# apps/web
+NEXT_PUBLIC_OPENSTAT_API_URL=https://api.example.com
+```
 
 ## Getting Started
 
 First, run the development server:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
 pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.

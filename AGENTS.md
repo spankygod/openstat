@@ -67,7 +67,8 @@ pnpm --filter backend seed:dev
 ## Environment
 
 Backend environment defaults live in `apps/backend/src/config/env.ts`, and the
-example file is `apps/backend/.env.example`.
+example file is `apps/backend/.env.example`. Web environment defaults are shown
+in `apps/web/.env.example`.
 
 Default local services:
 
@@ -76,6 +77,11 @@ Default local services:
 - Docs app: `http://localhost:3001`
 - Postgres: `postgres://openstat:openstat@localhost:5432/openstat`
 - Redis: `redis://localhost:6379`
+
+For split web/API deployments, do not leave web API variables pointed at
+`localhost`. Set `apps/web` `NEXT_PUBLIC_OPENSTAT_API_URL` to the public backend
+origin, and set backend `APP_WEB_URL`, `API_PUBLIC_URL`, and `BETTER_AUTH_URL`
+to the deployed web/API origins.
 
 Do not commit real `.env` files or secrets. `.env` files are intentionally
 ignored.
