@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-plus-jakarta-sans",
+});
 
 export const metadata: Metadata = {
   title: "OpenStat",
@@ -18,7 +24,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html className="light" data-theme="light" lang="en">
+    <html
+      className={`${plusJakartaSans.variable} light`}
+      data-theme="light"
+      lang="en"
+    >
       <body>
         {children}
         <Analytics />
