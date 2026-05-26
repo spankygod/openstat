@@ -99,24 +99,6 @@ async function publishProjectUpdatesAndInvalidateCaches(
       });
 
       try {
-        await client.publish(
-          REDIS_CHANNELS.projectUpdated,
-          JSON.stringify(message),
-        );
-        recordProjectUpdatePublish();
-      } catch (error) {
-        recordProjectUpdatePublishError();
-        console.warn(
-          {
-            error,
-            projectId,
-            workerId,
-          },
-          "Redis project update publish failed; cache TTLs remain active",
-        );
-      }
-
-      try {
         const invalidated = await invalidateProjectReadCaches({
           client,
           domains: message.domains,
@@ -141,6 +123,24 @@ async function publishProjectUpdatesAndInvalidateCaches(
             workerId,
           },
           "Redis project cache invalidation failed; TTL fallback remains active",
+        );
+      }
+
+      try {
+        await client.publish(
+          REDIS_CHANNELS.projectUpdated,
+          JSON.stringify(message),
+        );
+        recordProjectUpdatePublish();
+      } catch (error) {
+        recordProjectUpdatePublishError();
+        console.warn(
+          {
+            error,
+            projectId,
+            workerId,
+          },
+          "Redis project update publish failed; cache TTLs remain active",
         );
       }
     }),
