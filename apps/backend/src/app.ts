@@ -97,6 +97,28 @@ export async function buildApp() {
       servers: [{ url: env.apiPublicUrl }],
       tags: [
         {
+          name: "Agents",
+          description: [
+            "Read this first when an AI agent or LLM is integrating with OpenStat.",
+            "",
+            "Use these exact rules:",
+            "1. Store the ingestion key in `OPENSTAT_API_KEY` or the agent platform's secret store.",
+            "2. Send `Authorization: Bearer ${OPENSTAT_API_KEY}` on every telemetry request.",
+            "3. Send `Content-Type: application/json` with JSON request bodies.",
+            "4. Send one event to `/v1/ingest/events`, multiple events to `/v1/ingest/batch`, and liveness checks to `/v1/ingest/heartbeat`.",
+            "5. Do not put the API key in the JSON body.",
+            "6. Do not use an `x-api-key` header.",
+            "",
+            "Minimal request:",
+            "```sh",
+            'curl -X POST "$OPENSTAT_ENDPOINT/v1/ingest/heartbeat" \\',
+            '  -H "Authorization: Bearer $OPENSTAT_API_KEY" \\',
+            '  -H "Content-Type: application/json" \\',
+            '  -d \'{"agent":{"name":"my-agent"},"data":{"status":"online"}}\'',
+            "```",
+          ].join("\n"),
+        },
+        {
           name: "Ingestion",
           description: [
             "Canonical event ingestion API for agents.",

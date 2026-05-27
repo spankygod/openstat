@@ -30,7 +30,7 @@ export async function registerIngestionRoutes(app: FastifyInstance) {
     "/v1/ingest/events",
     {
       schema: {
-        tags: ["Ingestion"],
+        tags: ["Agents", "Ingestion"],
         summary: "Ingest one agent event",
         description: [
           "Canonical API-first endpoint. SDK helper methods eventually call this event model.",
@@ -78,7 +78,7 @@ export async function registerIngestionRoutes(app: FastifyInstance) {
     "/v1/ingest/batch",
     {
       schema: {
-        tags: ["Ingestion"],
+        tags: ["Agents", "Ingestion"],
         summary: "Ingest a batch of agent events",
         description: [
           "Accepts 1 to 100 agent events in one request.",
@@ -119,7 +119,7 @@ export async function registerIngestionRoutes(app: FastifyInstance) {
     "/v1/ingest/heartbeat",
     {
       schema: {
-        tags: ["Ingestion"],
+        tags: ["Agents", "Ingestion"],
         summary: "Ingest an agent heartbeat",
         description: [
           "Convenience endpoint for status monitoring. Internally stored as a normal `heartbeat` event.",
