@@ -111,6 +111,14 @@
 
 .dashboard-latest-panel .dashboard-table td {
   background: var(--panel);
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.dashboard-latest-panel .dashboard-table tbody tr:hover td,
+.dashboard-latest-panel .dashboard-table tbody tr:focus-within td {
+  background: color-mix(in oklab, var(--panel) 82%, var(--accent));
 }
 
 .dashboard-latest-panel .dashboard-table tbody tr:first-child td:first-child {

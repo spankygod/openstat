@@ -126,3 +126,19 @@
   line-height: 16px;
   letter-spacing: 0;
 }
+
+.dashboard-events-pagination {
+  margin-top: 16px;
+}
+
+.dashboard-latest-panel .dashboard-events-pagination {
+  padding-inline: 8px;
+}
+
+.dashboard-events-pagination-summary {
+  color: var(--muted);
+}
+
+.dashboard-events-pagination-content {
+  flex-wrap: wrap;
+}

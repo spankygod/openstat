@@ -124,6 +124,12 @@ export type DashboardEventsData = {
   };
 };
 
+type DashboardEventsOptions = {
+  cursor?: string;
+  includeRange?: boolean;
+  limit?: number;
+};
+
 export type DashboardRun = {
   id: string;
   externalRunId?: string | null;
@@ -204,16 +210,34 @@ export async function getDashboardData(
 
 export async function getDashboardEvents(
   range: DashboardRange = "7d",
-  limit = 50,
+  options: DashboardEventsOptions = {},
 ): Promise<DashboardEventsData> {
   await ensureWorkspaceInitialized();
+
+  const limit = options.limit ?? 50;
+  const query = new URLSearchParams({
+    limit: String(limit),
+  });
+
+  if (options.includeRange !== false) {
+    query.set("range", range);
+  }
+
+  if (options.cursor) {
+    query.set("cursor", options.cursor);
+  }
 
   const events = await getJson<{
     events: DashboardEvent[];
     pagination?: DashboardEventsData["pagination"];
-  }>(`/v1/events?limit=${limit}&range=${range}`);
+  }>(`/v1/events?${query.toString()}`);
 
-  if (events.ok && events.data.events.length === 0) {
+  if (
+    options.includeRange !== false &&
+    !options.cursor &&
+    events.ok &&
+    events.data.events.length === 0
+  ) {
     const latestEvents = await getJson<{
       events: DashboardEvent[];
       pagination?: DashboardEventsData["pagination"];
