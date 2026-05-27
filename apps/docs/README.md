@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/create-next-app).
+# OpenStat Docs
+
+This is the local docs app for OpenStat. It also exposes a server-side
+`/openapi.json` route that proxies the backend OpenAPI document from
+`OPENSTAT_API_URL`.
 
 ## Getting Started
 
-First, run the development server:
+Copy the example environment file:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```sh
+cp apps/docs/.env.example apps/docs/.env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+On Windows PowerShell:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```powershell
+Copy-Item apps/docs/.env.example apps/docs/.env.local
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load Inter, a custom Google Font.
+Run the docs app:
 
-## Learn More
+```sh
+pnpm --filter docs dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open [http://localhost:3001](http://localhost:3001).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## GitBook OpenAPI Sync
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Add these values to `apps/docs/.env.local`:
 
-## Deploy on Vercel
+```env
+GITBOOK_API_KEY=your_gitbook_api_key
+GITBOOK_ORG_ID=your_gitbook_org_id
+GITBOOK_OPENAPI_SLUG=openstat-api
+GITBOOK_OPENAPI_SOURCE_URL=https://your-public-docs-origin/openapi.json
+OPENSTAT_API_URL=http://localhost:4000
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+`GITBOOK_API_KEY` must stay server-side. Do not prefix it with `NEXT_PUBLIC_`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+GitBook cannot fetch `localhost`, so `GITBOOK_OPENAPI_SOURCE_URL` must be a
+public URL. When the docs app is deployed, point it at the deployed
+`/openapi.json` route.
+
+Sync the OpenAPI spec to GitBook:
+
+```sh
+pnpm --filter docs sync:gitbook:openapi
+```
+
+The script calls GitBook's OpenAPI create-or-update endpoint and keeps the spec
+slug stable so GitBook API reference blocks can continue to update from the same
+source.
+
+## Local OpenAPI Preview
+
+Start the backend on port `4000`, then visit:
+
+```text
+http://localhost:3001/openapi.json
+```
+
+This route is useful both for local verification and as the public source URL
+after deployment.

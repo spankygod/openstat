@@ -20,6 +20,7 @@ import { registerIngestionRoutes } from "./routes/ingestion.js";
 import { registerReadRoutes } from "./routes/read.js";
 import { registerWorkspaceInfoRoutes } from "./routes/workspace-info.js";
 import { registerWorkspaceRoutes } from "./routes/workspace.js";
+import { normalizeOpenApiDocumentForGitBook } from "./openapi/normalize.js";
 
 export async function buildApp() {
   const app = Fastify({
@@ -124,6 +125,10 @@ export async function buildApp() {
         },
       },
     },
+    transformObject: (documentObject) =>
+      "openapiObject" in documentObject
+        ? normalizeOpenApiDocumentForGitBook(documentObject.openapiObject)
+        : documentObject.swaggerObject,
   });
 
   await app.register(swaggerUi, {
