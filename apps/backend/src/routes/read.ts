@@ -882,7 +882,16 @@ export async function registerReadRoutes(app: FastifyInstance) {
         tags: ["Trading"],
         summary: "List trades for the current project",
         security: [...sessionCookieSecurity, ...bearerSecurity],
-        querystring: analyticsDetailResponseSchema,
+        querystring: {
+          type: "object",
+          properties: {
+            ...listQueryStringSchema.properties,
+            strategy: { type: "string", minLength: 1, maxLength: 160 },
+            symbol: { type: "string", minLength: 1, maxLength: 64 },
+            status: { type: "string", minLength: 1, maxLength: 80 },
+            range: { type: "string", enum: ["24h", "7d", "30d"] },
+          },
+        },
         response: {
           200: analyticsDetailResponseSchema,
           400: errorResponseSchema,
