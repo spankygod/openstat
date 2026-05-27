@@ -88,3 +88,165 @@
   font-weight: 500;
   line-height: 20px;
 }
+
+.runs-kpis {
+  margin-bottom: 18px;
+}
+
+.runs-workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  align-items: start;
+  gap: 16px;
+}
+
+.runs-table-panel {
+  min-width: 0;
+}
+
+.runs-table-panel .dashboard-table {
+  min-width: 880px;
+}
+
+.runs-run-cell {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 220px;
+  max-width: 320px;
+}
+
+.runs-run-cell small {
+  overflow: hidden;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runs-stage {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.runs-stage::before,
+.runs-stage-dot {
+  content: "";
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.runs-stage-good,
+.runs-stage-dot-good {
+  color: #59e67a;
+}
+
+.runs-stage-watch,
+.runs-stage-dot-watch {
+  color: #f4c64e;
+}
+
+.runs-stage-bad,
+.runs-stage-dot-bad {
+  color: #ff6b5f;
+}
+
+.runs-rail {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.runs-rail-panel .dashboard-panel-header {
+  margin-bottom: 10px;
+}
+
+.runs-breakdown-list,
+.runs-attention-list {
+  display: grid;
+  gap: 8px;
+}
+
+.runs-breakdown-item,
+.runs-attention-list a,
+.runs-empty-note {
+  min-width: 0;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #111311;
+}
+
+.runs-breakdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.runs-breakdown-item span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runs-breakdown-item strong {
+  flex: 0 0 auto;
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.runs-attention-list a {
+  display: grid;
+  gap: 4px;
+}
+
+.runs-attention-list a:hover,
+.runs-breakdown-item:hover {
+  background: color-mix(in oklab, #111311 84%, var(--accent));
+}
+
+.runs-attention-list strong {
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runs-attention-list span,
+.runs-empty-note {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+@media (max-width: 1100px) {
+  .runs-workbench {
+    grid-template-columns: 1fr;
+  }
+}

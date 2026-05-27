@@ -132,6 +132,7 @@ type DashboardEventsOptions = {
 
 export type DashboardRun = {
   id: string;
+  endedAt?: string | null;
   externalRunId?: string | null;
   strategy?: string | null;
   status: string;
