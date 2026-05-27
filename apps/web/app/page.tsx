@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Link as HeroLink } from "@heroui/react";
-import { ArrowRight, LogIn } from "lucide-react";
+import { ArrowRight, BookOpen, LogIn } from "lucide-react";
 
 export default function Home() {
   return (
@@ -19,9 +19,6 @@ export default function Home() {
           />
           OpenStat
         </HeroLink>
-        <div className="landing-nav-links">
-          <Link href="/docs">Docs</Link>
-        </div>
         <Link className="landing-nav-cta" href="/sign-up">
           <LogIn aria-hidden="true" size={15} />
           Try for free
@@ -43,6 +40,13 @@ export default function Home() {
             >
               Start tracking
               <ArrowRight aria-hidden="true" size={16} />
+            </Link>
+            <Link
+              className="landing-button landing-button-secondary"
+              href="https://docs.openstat.online"
+            >
+              <BookOpen aria-hidden="true" size={16} />
+              Docs
             </Link>
           </div>
         </div>

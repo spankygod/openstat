@@ -314,12 +314,12 @@ p {
 }
 
 .landing-button-secondary {
-  background: rgba(27, 29, 38, 0.7);
+  background: transparent;
   color: var(--foreground);
 }
 
 .landing-button-secondary:hover {
-  background: rgba(39, 42, 53, 0.9);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 /* Content pages */
