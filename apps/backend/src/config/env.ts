@@ -55,6 +55,14 @@ const rawEnvSchema = z.object({
   INGESTION_WORKER_POLL_MS: z.coerce.number().int().positive().default(1_000),
   INGESTION_LOCK_TTL_SECONDS: z.coerce.number().int().positive().default(60),
   INGESTION_WORKER_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+  RETENTION_SWEEP_ENABLED: z.enum(["true", "false"]).optional(),
+  RETENTION_SWEEP_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(3_600_000),
+  RAW_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
+  DERIVED_RETENTION_DAYS: z.coerce.number().int().positive().default(365),
 });
 
 const parsedEnv = rawEnvSchema.parse(process.env);
@@ -98,4 +106,11 @@ export const env = {
   ingestionWorkerPollMs: parsedEnv.INGESTION_WORKER_POLL_MS,
   ingestionLockTtlSeconds: parsedEnv.INGESTION_LOCK_TTL_SECONDS,
   ingestionWorkerMaxAttempts: parsedEnv.INGESTION_WORKER_MAX_ATTEMPTS,
+  retentionSweepEnabled:
+    parsedEnv.RETENTION_SWEEP_ENABLED === undefined
+      ? parsedEnv.NODE_ENV === "production"
+      : parsedEnv.RETENTION_SWEEP_ENABLED === "true",
+  retentionSweepIntervalMs: parsedEnv.RETENTION_SWEEP_INTERVAL_MS,
+  rawRetentionDays: parsedEnv.RAW_RETENTION_DAYS,
+  derivedRetentionDays: parsedEnv.DERIVED_RETENTION_DAYS,
 } as const;

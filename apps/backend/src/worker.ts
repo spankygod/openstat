@@ -5,6 +5,7 @@ import {
   invalidateProjectReadCaches,
   processClaim,
   REDIS_CHANNELS,
+  sweepRetention,
   sweepAgentHealth,
   type IngestionSignalSubscription,
 } from "@openstat/ingestion";
@@ -24,6 +25,7 @@ const workerId = `worker_${crypto.randomUUID()}`;
 let shuttingDown = false;
 let pendingWakeup = false;
 let wakeupResolver: (() => void) | undefined;
+let lastRetentionSweepAt = 0;
 
 process.on("SIGINT", () => {
   shuttingDown = true;
@@ -79,6 +81,34 @@ async function runWorkerPass() {
     defaultStaleSeconds: env.defaultAgentStaleSeconds,
     defaultOfflineSeconds: env.defaultAgentOfflineSeconds,
   });
+
+  await runRetentionSweepIfDue();
+}
+
+async function runRetentionSweepIfDue() {
+  if (!env.retentionSweepEnabled) {
+    return;
+  }
+
+  const now = Date.now();
+
+  if (now - lastRetentionSweepAt < env.retentionSweepIntervalMs) {
+    return;
+  }
+
+  lastRetentionSweepAt = now;
+
+  try {
+    const result = await sweepRetention({
+      db: database.db,
+      derivedRetentionDays: env.derivedRetentionDays,
+      rawRetentionDays: env.rawRetentionDays,
+    });
+
+    console.info({ workerId, ...result }, "Swept retained telemetry");
+  } catch (error) {
+    console.warn({ error, workerId }, "Retention sweep failed");
+  }
 }
 
 async function publishProjectUpdatesAndInvalidateCaches(

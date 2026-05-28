@@ -288,6 +288,153 @@ export async function processClaim(options: {
   return { processed, retryable, deadLettered };
 }
 
+export type RetentionSweepResult = {
+  cutoffs: {
+    derived: string;
+    raw: string;
+  };
+  deleted: {
+    agentRuns: number;
+    events: number;
+    fills: number;
+    ingestionBatches: number;
+    ingestionOutbox: number;
+    notifications: number;
+    orders: number;
+    otelLogs: number;
+    otelMetrics: number;
+    otelSpans: number;
+    pnlSnapshots: number;
+    riskChecks: number;
+    tradingDecisions: number;
+  };
+};
+
+export async function sweepRetention(options: {
+  db: Database["db"];
+  derivedRetentionDays: number;
+  now?: Date;
+  rawRetentionDays: number;
+}): Promise<RetentionSweepResult> {
+  const now = options.now ?? new Date();
+  const rawCutoff = getRetentionCutoff(now, options.rawRetentionDays);
+  const derivedCutoff = getRetentionCutoff(now, options.derivedRetentionDays);
+
+  const deleted = {
+    ingestionOutbox: await deleteCount(
+      options.db
+        .delete(schema.ingestionOutbox)
+        .where(
+          and(
+            inArray(schema.ingestionOutbox.status, [
+              "processed",
+              "dead_lettered",
+            ]),
+            lt(schema.ingestionOutbox.createdAt, rawCutoff),
+          ),
+        )
+        .returning({ id: schema.ingestionOutbox.id }),
+    ),
+    ingestionBatches: await deleteCount(
+      options.db
+        .delete(schema.ingestionBatches)
+        .where(
+          and(
+            inArray(schema.ingestionBatches.status, [
+              "processed",
+              "partially_processed",
+              "failed",
+            ]),
+            lt(schema.ingestionBatches.receivedAt, rawCutoff),
+          ),
+        )
+        .returning({ id: schema.ingestionBatches.id }),
+    ),
+    otelMetrics: await deleteCount(
+      options.db
+        .delete(schema.otelMetrics)
+        .where(lt(schema.otelMetrics.recordedAt, derivedCutoff))
+        .returning({ id: schema.otelMetrics.id }),
+    ),
+    otelLogs: await deleteCount(
+      options.db
+        .delete(schema.otelLogs)
+        .where(lt(schema.otelLogs.observedAt, derivedCutoff))
+        .returning({ id: schema.otelLogs.id }),
+    ),
+    otelSpans: await deleteCount(
+      options.db
+        .delete(schema.otelSpans)
+        .where(lt(schema.otelSpans.startedAt, derivedCutoff))
+        .returning({ id: schema.otelSpans.id }),
+    ),
+    pnlSnapshots: await deleteCount(
+      options.db
+        .delete(schema.pnlSnapshots)
+        .where(lt(schema.pnlSnapshots.snapshotAt, derivedCutoff))
+        .returning({ id: schema.pnlSnapshots.id }),
+    ),
+    fills: await deleteCount(
+      options.db
+        .delete(schema.fills)
+        .where(lt(schema.fills.filledAt, derivedCutoff))
+        .returning({ id: schema.fills.id }),
+    ),
+    riskChecks: await deleteCount(
+      options.db
+        .delete(schema.riskChecks)
+        .where(lt(schema.riskChecks.checkedAt, derivedCutoff))
+        .returning({ id: schema.riskChecks.id }),
+    ),
+    tradingDecisions: await deleteCount(
+      options.db
+        .delete(schema.tradingDecisions)
+        .where(lt(schema.tradingDecisions.decidedAt, derivedCutoff))
+        .returning({ id: schema.tradingDecisions.id }),
+    ),
+    orders: await deleteCount(
+      options.db
+        .delete(schema.orders)
+        .where(lt(schema.orders.createdAt, derivedCutoff))
+        .returning({ id: schema.orders.id }),
+    ),
+    agentRuns: await deleteCount(
+      options.db
+        .delete(schema.agentRuns)
+        .where(lt(schema.agentRuns.startedAt, derivedCutoff))
+        .returning({ id: schema.agentRuns.id }),
+    ),
+    notifications: await deleteCount(
+      options.db
+        .delete(schema.notifications)
+        .where(lt(schema.notifications.createdAt, derivedCutoff))
+        .returning({ id: schema.notifications.id }),
+    ),
+    events: await deleteCount(
+      options.db
+        .delete(schema.events)
+        .where(lt(schema.events.timestamp, derivedCutoff))
+        .returning({ id: schema.events.id }),
+    ),
+  };
+
+  return {
+    cutoffs: {
+      derived: derivedCutoff.toISOString(),
+      raw: rawCutoff.toISOString(),
+    },
+    deleted,
+  };
+}
+
+function getRetentionCutoff(now: Date, retentionDays: number) {
+  return new Date(now.valueOf() - retentionDays * 24 * 60 * 60 * 1_000);
+}
+
+async function deleteCount(rows: Promise<unknown[]>) {
+  return (await rows).length;
+}
+
 export async function listEvents(options: {
   db: Database["db"];
   scope: ReadScope;
