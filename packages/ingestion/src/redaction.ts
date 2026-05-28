@@ -22,6 +22,7 @@ const safeKeyPatterns = [
   /equity/iu,
   /fee/iu,
   /hash/iu,
+  /input_tokens/iu,
   /latency/iu,
   /model/iu,
   /order_type/iu,

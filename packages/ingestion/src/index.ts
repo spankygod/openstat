@@ -239,7 +239,7 @@ export async function processClaim(options: {
   let retryable = 0;
   let deadLettered = 0;
 
-  for (const row of options.rows) {
+  for (const row of [...options.rows].sort(compareOutboxProcessingOrder)) {
     try {
       const event = parseOutboxEvent(row.payload);
       await projectEvent(options.db, row, event);
@@ -454,9 +454,7 @@ export async function getIngestionOutboxHealth(options: {
       oldestCreatedAt: sql<Date | null>`min(${schema.ingestionOutbox.createdAt})`,
     })
     .from(schema.ingestionOutbox)
-    .where(
-      inArray(schema.ingestionOutbox.status, ["pending", "retryable"]),
-    );
+    .where(inArray(schema.ingestionOutbox.status, ["pending", "retryable"]));
 
   const oldestPendingAt = pendingRow?.oldestCreatedAt
     ? new Date(pendingRow.oldestCreatedAt)
@@ -1205,8 +1203,9 @@ export async function sweepAgentHealth(options: {
 
     const staleSeconds =
       agent.expectedCheckInSeconds ?? options.defaultStaleSeconds;
-    const offlineSeconds = Math.max(
-      staleSeconds * 2,
+    const offlineSeconds = getOfflineThresholdSeconds(
+      agent.expectedCheckInSeconds,
+      staleSeconds,
       options.defaultOfflineSeconds,
     );
     const ageSeconds = Math.floor(
@@ -1844,7 +1843,11 @@ function getEffectiveAgentStatus(
   }
 
   const staleSeconds = agent.expectedCheckInSeconds ?? defaultAgentStaleSeconds;
-  const offlineSeconds = Math.max(staleSeconds * 2, defaultAgentOfflineSeconds);
+  const offlineSeconds = getOfflineThresholdSeconds(
+    agent.expectedCheckInSeconds,
+    staleSeconds,
+    defaultAgentOfflineSeconds,
+  );
   const ageSeconds = Math.floor(
     (now.valueOf() - agent.lastSeenAt.valueOf()) / 1000,
   );
@@ -1894,6 +1897,64 @@ function parseOutboxEvent(payload: unknown): IngestEventInput {
   }
 
   return parsed.data;
+}
+
+function compareOutboxProcessingOrder(
+  left: typeof schema.ingestionOutbox.$inferSelect,
+  right: typeof schema.ingestionOutbox.$inferSelect,
+) {
+  const leftKey = getOutboxProcessingKey(left.payload);
+  const rightKey = getOutboxProcessingKey(right.payload);
+
+  return (
+    leftKey.timestamp - rightKey.timestamp ||
+    leftKey.priority - rightKey.priority ||
+    left.createdAt.valueOf() - right.createdAt.valueOf()
+  );
+}
+
+function getOutboxProcessingKey(payload: unknown) {
+  if (!isRecord(payload)) {
+    return { priority: Number.MAX_SAFE_INTEGER, timestamp: 0 };
+  }
+
+  return {
+    priority: getEventProcessingPriority(payload.type),
+    timestamp:
+      typeof payload.timestamp === "number" &&
+      Number.isFinite(payload.timestamp)
+        ? payload.timestamp
+        : 0,
+  };
+}
+
+function getEventProcessingPriority(type: unknown) {
+  switch (type) {
+    case "decision":
+      return 0;
+    case "risk_check":
+      return 1;
+    case "order":
+      return 2;
+    case "fill":
+      return 3;
+    case "position":
+      return 4;
+    case "pnl_snapshot":
+      return 5;
+    default:
+      return 10;
+  }
+}
+
+function getOfflineThresholdSeconds(
+  expectedCheckInSeconds: number | null,
+  staleSeconds: number,
+  defaultOfflineSeconds: number,
+) {
+  return expectedCheckInSeconds === null
+    ? defaultOfflineSeconds
+    : Math.max(staleSeconds * 2, staleSeconds);
 }
 
 function normalizeAgentStatus(status: string | undefined) {
