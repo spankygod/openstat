@@ -30,8 +30,8 @@ build
 dist
 
 # Local planning docs
-docs/plans/
-
+docs/plans/*
+!docs/plans/openstat-production-readiness-plan.md
 
 # Debug
 npm-debug.log*
