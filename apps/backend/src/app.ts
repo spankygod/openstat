@@ -17,6 +17,7 @@ import { registerAuthRoutes } from "./routes/auth.js";
 import { registerApiKeyRoutes } from "./routes/api-keys.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerIngestionRoutes } from "./routes/ingestion.js";
+import { registerOtlpRoutes } from "./routes/otlp.js";
 import { registerReadRoutes } from "./routes/read.js";
 import { registerWorkspaceInfoRoutes } from "./routes/workspace-info.js";
 import { registerWorkspaceRoutes } from "./routes/workspace.js";
@@ -184,6 +185,7 @@ export async function buildApp() {
   await registerWorkspaceInfoRoutes(app);
   await registerApiKeyRoutes(app);
   await registerIngestionRoutes(app);
+  await registerOtlpRoutes(app);
   await registerReadRoutes(app);
 
   app.get(
