@@ -1615,6 +1615,7 @@ async function upsertAgentRun(
     })
     .onConflictDoUpdate({
       target: [schema.agentRuns.projectId, schema.agentRuns.externalRunId],
+      targetWhere: sql`${schema.agentRuns.externalRunId} IS NOT NULL`,
       set: {
         agentId,
         strategy: getString(event.data?.strategy),
