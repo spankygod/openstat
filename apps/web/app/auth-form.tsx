@@ -45,11 +45,12 @@ export function AuthForm({ mode }: AuthFormProps) {
     setIsPending(true);
 
     try {
+      const dashboardUrl = getDashboardUrl();
       const { error } = await authClient.signIn.email({
         email: String(formData.get("email") ?? ""),
         password: String(formData.get("password") ?? ""),
         rememberMe: true,
-        callbackURL: "/dashboard",
+        callbackURL: dashboardUrl,
       });
 
       if (error) {
@@ -60,7 +61,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         return;
       }
 
-      window.location.href = "/dashboard";
+      window.location.href = dashboardUrl;
     } catch {
       setError(
         "Could not reach the OpenStat API. Check that the backend is running.",
@@ -75,6 +76,7 @@ export function AuthForm({ mode }: AuthFormProps) {
     setIsPending(true);
 
     try {
+      const dashboardUrl = getDashboardUrl();
       const firstName = String(formData.get("firstName") ?? "").trim();
       const lastName = String(formData.get("lastName") ?? "").trim();
       const email = String(formData.get("email") ?? "").trim();
@@ -83,7 +85,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         name: [firstName, lastName].filter(Boolean).join(" "),
         email,
         password: String(formData.get("password") ?? ""),
-        callbackURL: "/dashboard",
+        callbackURL: dashboardUrl,
       });
 
       if (error) {
@@ -94,7 +96,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         return;
       }
 
-      window.location.href = "/dashboard";
+      window.location.href = dashboardUrl;
     } catch {
       setError(
         "Could not reach the OpenStat API. Check that the backend is running.",
@@ -111,7 +113,7 @@ export function AuthForm({ mode }: AuthFormProps) {
     try {
       const { error } = await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/dashboard",
+        callbackURL: getDashboardUrl(),
       });
 
       if (error) {
@@ -133,7 +135,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   function signInDemo() {
     setError(undefined);
     setIsPending(true);
-    window.location.href = "/dashboard";
+    window.location.href = getDashboardUrl();
   }
 
   return (
@@ -310,6 +312,10 @@ export function AuthForm({ mode }: AuthFormProps) {
       </div>
     </main>
   );
+}
+
+function getDashboardUrl() {
+  return `${window.location.origin}/dashboard`;
 }
 
 function GoogleMark() {
