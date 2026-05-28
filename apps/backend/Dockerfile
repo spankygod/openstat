@@ -25,6 +25,12 @@ COPY packages/schemas packages/schemas
 COPY packages/eslint-config packages/eslint-config
 COPY packages/typescript-config packages/typescript-config
 
+RUN pnpm --filter @openstat/db build \
+  && pnpm --filter @openstat/schemas build \
+  && pnpm --filter @openstat/auth build \
+  && pnpm --filter @openstat/ingestion build \
+  && pnpm --filter backend build
+
 EXPOSE 4000
 
 CMD ["pnpm", "--filter", "backend", "start"]

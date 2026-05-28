@@ -4,8 +4,16 @@
   "type": "module",
   "private": true,
   "exports": {
-    ".": "./src/index.ts",
-    "./ingestion": "./src/ingestion.ts"
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./ingestion": {
+      "types": "./src/ingestion.ts",
+      "import": "./dist/ingestion.js",
+      "default": "./dist/ingestion.js"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
