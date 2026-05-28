@@ -14,21 +14,22 @@ OpenStat is in early MVP development.
 The current codebase includes:
 
 - A Fastify backend API with auth, API keys, native JSON ingestion, read APIs,
-  and OpenAPI schemas.
+  OTLP/HTTP ingestion, and OpenAPI schemas.
 - A worker path for normalizing, redacting, and projecting ingested events.
+- Configurable retention sweeps for raw and derived telemetry.
 - Postgres schema and Drizzle migrations.
 - A Next.js dashboard with overview, agents, runs, trades, alerts, settings, and
   API key pages.
-- TypeScript and Python SDK helpers for sending native OpenStat telemetry.
+- TypeScript and Python SDK helpers for sending native OpenStat telemetry and
+  configuring OTLP/HTTP exporters.
 - Hetzner Docker Compose deployment notes, backup scripts, and operations
   runbooks.
 
 Still planned:
 
-- Full OTLP/HTTP protobuf decoding for traces, logs, and metrics.
-- Production-grade SDK instrumentation packages beyond endpoint/config helpers.
-- Retention jobs for raw telemetry and derived aggregates.
-- More complete dashboard session UX and interactive management flows.
+- Production-grade SDK instrumentation packages beyond the early-access helper
+  clients.
+- More complete dashboard management flows.
 - End-to-end validation on a fresh production-like deployment.
 
 ## Repository Layout
@@ -149,6 +150,14 @@ POST /v1/ingest/batch
 POST /v1/ingest/heartbeat
 ```
 
+OTLP/HTTP ingestion endpoints:
+
+```text
+POST /v1/traces
+POST /v1/logs
+POST /v1/metrics
+```
+
 Requests are authenticated with:
 
 ```text
@@ -176,6 +185,13 @@ docker compose -f deploy/hetzner/docker-compose.yml --env-file deploy/hetzner/.e
 
 Copy `deploy/hetzner/.env.example` to `deploy/hetzner/.env` and replace every
 secret before deploying.
+
+For early-access launch, complete
+`deploy/hetzner/LAUNCH_CHECKLIST.md` and run:
+
+```sh
+deploy/hetzner/scripts/check-openstat.sh
+```
 
 ## Security And Privacy
 

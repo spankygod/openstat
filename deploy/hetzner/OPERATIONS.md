@@ -53,6 +53,44 @@ deploy/hetzner/scripts/restore-postgres.sh /backups/openstat/openstat-latest.dum
 - Disk: alert before 80% usage and page before 90%.
 - Backups: alert if no dump file was written in the last 26 hours.
 
+Run the bundled VPS health check from the repository root after deploys and
+before early-access launch:
+
+```sh
+deploy/hetzner/scripts/check-openstat.sh
+```
+
+The script checks Compose services, `/health`, `/ready`, Postgres, Redis, disk
+usage, and backup freshness. It exits non-zero when a critical check fails and
+prints warnings for degraded but recoverable items.
+
+## UptimeRobot
+
+Use UptimeRobot for external checks that do not depend on the VPS itself:
+
+- `https://api.openstat.online/health`
+- `https://api.openstat.online/ready`
+- `https://www.openstat.online`
+- SSL expiry monitors for `api.openstat.online` and `www.openstat.online`
+
+Treat a failed `/ready` monitor as an alert. Treat worker outbox rows older than
+5 minutes or any dead-lettered row in `/ready.outbox` as a warning that should
+be investigated before customer traffic increases.
+
+## Auth Email
+
+Production email-password auth requires provider-backed email delivery. Set:
+
+```text
+AUTH_REQUIRE_EMAIL_VERIFICATION=true
+AUTH_EMAIL_PROVIDER=resend
+AUTH_EMAIL_FROM="OpenStat <noreply@openstat.online>"
+RESEND_API_KEY=<resend-api-key>
+```
+
+The backend refuses to boot in production with `AUTH_EMAIL_PROVIDER=log`, and it
+refuses `AUTH_EMAIL_PROVIDER=resend` without `RESEND_API_KEY`.
+
 ## Redis Operations
 
 Redis accelerates short-lived wake-up signals and caches only. Postgres remains

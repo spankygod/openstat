@@ -28,7 +28,11 @@ docker compose -f deploy/hetzner/docker-compose.yml --env-file deploy/hetzner/.e
 ```sh
 curl https://api.openstat.example.com/health
 curl https://api.openstat.example.com/ready
+deploy/hetzner/scripts/check-openstat.sh
 ```
+
+Before opening early access, complete
+`deploy/hetzner/LAUNCH_CHECKLIST.md`.
 
 ## Vercel
 
