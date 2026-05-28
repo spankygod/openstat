@@ -19,7 +19,6 @@ export function DashboardTopToolbar(props: {
   eyebrow?: string;
   range: DashboardRange;
   rangeBasePath?: string;
-  errorCount: number;
   showSignIn?: boolean;
   title?: string;
   unreadNotifications: number;
@@ -51,7 +50,7 @@ export function DashboardTopToolbar(props: {
 
           <a className="dashboard-icon-link" href="#alerts">
             <Bell aria-hidden="true" size={16} />
-            <span>{props.unreadNotifications || props.errorCount}</span>
+            <span>{props.unreadNotifications}</span>
           </a>
 
           <DashboardThemeModeControl />

@@ -6,12 +6,6 @@ export function getDashboardAttentionItems(
   range: DashboardRange,
 ) {
   return [
-    ...data.errors.map((error) => ({
-      href: "#backend-notice",
-      meta: "Backend connection",
-      title: error,
-      tone: "danger" as const,
-    })),
     ...data.notifications
       .filter((notification) => notification.status !== "archived")
       .slice(0, 4)

@@ -30,19 +30,11 @@ export function DashboardRouteShell(props: {
 
       <main className="shell dashboard-content">
         <DashboardTopToolbar
-          errorCount={props.data.errors.length}
           range={props.range}
           rangeBasePath={rangeBasePath}
           title={props.title}
           unreadNotifications={unreadNotifications}
         />
-
-        {props.data.errors.length > 0 ? (
-          <section className="notice" id="backend-notice">
-            <strong>Backend connection needs attention.</strong>
-            <span>{props.data.errors.slice(0, 2).join(" | ")}</span>
-          </section>
-        ) : null}
 
         {props.children}
       </main>
