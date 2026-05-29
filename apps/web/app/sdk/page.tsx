@@ -39,13 +39,13 @@ export default function SdkPage() {
       <section className="content-grid" aria-label="SDK options">
         <article className="content-card">
           <span>TypeScript</span>
-          <h2>@openstat/sdk</h2>
+          <h2>openstat</h2>
           <p>
             Record agent runs, decisions, risk checks, orders, fills, PnL
             snapshots, and heartbeats from Node-based agents.
           </p>
           <pre>
-            <code>{`pnpm add @openstat/sdk`}</code>
+            <code>{`pnpm add openstat`}</code>
           </pre>
           <Link className="content-card-link" href="/quickstart">
             Use in quickstart

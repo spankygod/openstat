@@ -1,9 +1,9 @@
-# @openstat/sdk
+# openstat
 
 TypeScript helpers for sending native OpenStat telemetry from AI trading agents.
 
 ```ts
-import { createOpenStatClient } from "@openstat/sdk";
+import { createOpenStatClient } from "openstat";
 
 const openstat = createOpenStatClient({
   apiKey: process.env.OPENSTAT_API_KEY!,

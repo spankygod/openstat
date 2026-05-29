@@ -54,7 +54,7 @@ export default function QuickstartPage() {
               and OpenTelemetry HTTP exporter configuration.
             </p>
             <pre>
-              <code>{`pnpm add @openstat/sdk\npip install openstat`}</code>
+              <code>{`pnpm add openstat\npip install openstat`}</code>
             </pre>
           </div>
         </section>
