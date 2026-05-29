@@ -1,8 +1,9 @@
 import { IngestionError } from "@openstat/ingestion";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { ZodError } from "zod";
 
 import { AuthScopeError } from "../auth-scope.js";
+import { captureException } from "../sentry.js";
 
 export async function registerErrorHandler(app: FastifyInstance) {
   app.setErrorHandler((error, request, reply) => {
@@ -38,6 +39,12 @@ export async function registerErrorHandler(app: FastifyInstance) {
     }
 
     if (isHttpError(error)) {
+      if (error.statusCode >= 500) {
+        captureException(error, {
+          request: getRequestContext(request),
+        });
+      }
+
       return reply.status(error.statusCode).send({
         error: {
           code: typeof error.code === "string" ? error.code : "REQUEST_ERROR",
@@ -47,6 +54,9 @@ export async function registerErrorHandler(app: FastifyInstance) {
       });
     }
 
+    captureException(error, {
+      request: getRequestContext(request),
+    });
     request.log.error({ err: error }, "Unhandled request error");
 
     return reply.status(500).send({
@@ -57,6 +67,15 @@ export async function registerErrorHandler(app: FastifyInstance) {
       },
     });
   });
+}
+
+function getRequestContext(request: FastifyRequest) {
+  return {
+    id: request.id,
+    method: request.method,
+    route: request.routeOptions.url,
+    url: request.url,
+  };
 }
 
 function isHttpError(

@@ -29,6 +29,7 @@
     "@openstat/db": "workspace:*",
     "@openstat/ingestion": "workspace:*",
     "@openstat/schemas": "workspace:*",
+    "@sentry/node": "^10.55.0",
     "better-auth": "^1.4.6",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",

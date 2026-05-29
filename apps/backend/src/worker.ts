@@ -1,3 +1,5 @@
+import "./sentry.js";
+
 import {
   claimIngestionOutbox,
   createProjectUpdatedMessage,
@@ -20,6 +22,7 @@ import {
   recordWakeupInvalidMessage,
   recordWakeupMessage,
 } from "./redis-telemetry.js";
+import { captureException, flushSentry } from "./sentry.js";
 
 const workerId = `worker_${crypto.randomUUID()}`;
 let shuttingDown = false;
@@ -34,6 +37,24 @@ process.on("SIGINT", () => {
 process.on("SIGTERM", () => {
   shuttingDown = true;
   wakeWorker();
+});
+process.on("uncaughtException", (error) => {
+  captureException(error, {
+    worker: {
+      id: workerId,
+    },
+  });
+  void flushSentry().finally(() => {
+    console.error({ error, workerId }, "OpenStat ingestion worker crashed");
+    process.exit(1);
+  });
+});
+process.on("unhandledRejection", (error) => {
+  captureException(error, {
+    worker: {
+      id: workerId,
+    },
+  });
 });
 
 console.info({ workerId }, "OpenStat ingestion worker started");
@@ -107,6 +128,12 @@ async function runRetentionSweepIfDue() {
 
     console.info({ workerId, ...result }, "Swept retained telemetry");
   } catch (error) {
+    captureException(error, {
+      worker: {
+        id: workerId,
+        task: "retention_sweep",
+      },
+    });
     console.warn({ error, workerId }, "Retention sweep failed");
   }
 }
