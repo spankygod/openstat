@@ -3,6 +3,7 @@ import { createDatabase, schema } from "@openstat/db";
 import {
   acceptIngestionBatch,
   claimIngestionOutbox,
+  getAnalyticsSummary,
   getOverview,
   listEvents,
   listNotifications,
@@ -551,6 +552,20 @@ describeIntegration("ingestion outbox integration", () => {
         equity: "10041.20",
       }),
     );
+    const analytics = await getAnalyticsSummary({
+      db: database.db,
+      scope: {
+        organizationId: fixture.organizationId,
+        projectId: fixture.projectId,
+      },
+      range: "30d",
+    });
+
+    expect(analytics.totals).toMatchObject({
+      pnlRealized: 0,
+      pnlTotal: 41.2,
+      pnlUnrealized: 41.2,
+    });
   });
 
   it("transitions stale and offline agents with deduped notifications", async () => {

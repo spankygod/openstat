@@ -8,6 +8,7 @@ import {
   DashboardPanel,
   DashboardStatusChip,
   formatNumber,
+  formatPnl,
 } from "../dashboard-components";
 import {
   getFirstParam,
@@ -67,10 +68,20 @@ export default async function TradesPage(props: TradesPageProps) {
         />
         <DashboardKpiCard
           href="/dashboard/trades"
-          label="PnL snapshots"
+          badge={{
+            label: `${formatNumber(totals.pnlSnapshots)} snapshots`,
+          }}
+          label="Current PnL"
           series={series}
           seriesKey="pnlSnapshots"
-          value={formatNumber(totals.pnlSnapshots)}
+          tone={
+            (totals.pnlTotal ?? 0) > 0
+              ? "success"
+              : (totals.pnlTotal ?? 0) < 0
+                ? "danger"
+                : "neutral"
+          }
+          value={formatPnl(totals.pnlTotal)}
         />
       </section>
 

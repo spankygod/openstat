@@ -232,3 +232,13 @@ export function formatRelativeTime(value?: string | null) {
 export function formatNumber(value?: number) {
   return (value ?? 0).toLocaleString();
 }
+
+export function formatPnl(value?: number) {
+  const amount = value ?? 0;
+  const formatted = Math.abs(amount).toLocaleString(undefined, {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+  });
+
+  return `${amount > 0 ? "+" : amount < 0 ? "-" : ""}${formatted}`;
+}

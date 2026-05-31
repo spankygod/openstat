@@ -1023,6 +1023,7 @@ export async function getAnalyticsSummary(options: {
         gte(schema.pnlSnapshots.snapshotAt, rangeStart),
       ),
     );
+  const pnl = await getCurrentPnlSummary(options.db, options.scope.projectId);
 
   return {
     range: options.range,
@@ -1041,6 +1042,9 @@ export async function getAnalyticsSummary(options: {
       orders: orders?.value ?? 0,
       fills: fills?.value ?? 0,
       pnlSnapshots: pnlSnapshots?.value ?? 0,
+      pnlRealized: pnl.realized,
+      pnlUnrealized: pnl.unrealized,
+      pnlTotal: pnl.total,
       failures: failures?.value ?? 0,
       riskRejects: riskRejects?.value ?? 0,
     },
@@ -1054,6 +1058,44 @@ export async function getAnalyticsSummary(options: {
     },
     topTraces: [],
   };
+}
+
+async function getCurrentPnlSummary(db: Database["db"], projectId: string) {
+  const snapshots = await db
+    .selectDistinctOn([schema.pnlSnapshots.strategy, schema.pnlSnapshots.symbol], {
+      realizedPnl: schema.pnlSnapshots.realizedPnl,
+      strategy: schema.pnlSnapshots.strategy,
+      symbol: schema.pnlSnapshots.symbol,
+      unrealizedPnl: schema.pnlSnapshots.unrealizedPnl,
+    })
+    .from(schema.pnlSnapshots)
+    .where(eq(schema.pnlSnapshots.projectId, projectId))
+    .orderBy(
+      schema.pnlSnapshots.strategy,
+      schema.pnlSnapshots.symbol,
+      desc(schema.pnlSnapshots.snapshotAt),
+    );
+  const portfolioSnapshot = snapshots.find(
+    (snapshot) => snapshot.strategy === null && snapshot.symbol === null,
+  );
+  const currentSnapshots = portfolioSnapshot ? [portfolioSnapshot] : snapshots;
+
+  return currentSnapshots.reduce(
+    (summary, snapshot) => {
+      summary.realized += getOptionalNumber(snapshot.realizedPnl);
+      summary.unrealized += getOptionalNumber(snapshot.unrealizedPnl);
+      summary.total = summary.realized + summary.unrealized;
+
+      return summary;
+    },
+    { realized: 0, total: 0, unrealized: 0 },
+  );
+}
+
+function getOptionalNumber(value: string | null) {
+  const number = Number(value ?? 0);
+
+  return Number.isFinite(number) ? number : 0;
 }
 
 export async function listIngestionBatches(options: {
